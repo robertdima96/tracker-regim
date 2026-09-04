@@ -79,6 +79,17 @@ Reguli:
   a lega fiecare doborâre de Gastrofait/Asketon de masa căreia îi corespunde,
   strict pentru calculul avertismentelor (secțiunea Avertismente).
 
+### Schimbarea datei de start după ce tratamentul a început
+
+Editarea `treatmentStartDate` din header **nu rescrie retroactiv** zilele
+deja persistate în `localStorage` (acestea își păstrează `events` exact cum
+au fost salvate, inclusiv prezența/absența `nolpaza-pm`). Schimbarea afectează
+doar: (a) ce fereastră de 90 zile e evidențiată în calendar, (b) ce regim
+(lună 1 vs 2-3) se folosește la generarea implicită a zilelor **încă
+nevizitate**. E o consecință directă a modelului "generare efemeră + scriere
+doar la prima interacțiune", nu o funcționalitate separată — se menționează
+aici explicit ca să nu fie surprinzătoare.
+
 ### Zile în afara ferestrei de 90 zile
 
 Calendarul permite navigare liberă, dar zilele din afara ferestrei
@@ -195,7 +206,13 @@ cardul mesei respective, fără să blocheze nimic.
 ## Structură UI
 
 - **Header**: titlu, dată de start a tratamentului (input dată, persistă în
-  config global), câmpuri oră de trezire / culcare globale.
+  config global), câmpuri oră de trezire / culcare globale, buton "Backup"
+  (vezi secțiunea Backup).
+- La încărcarea paginii, aplicația se deschide direct pe **panoul zilei
+  curente** (nu cere click pe calendar) — calendarul rămâne disponibil doar
+  pentru navigare către alte zile.
+- Un **banner mereu vizibil** deasupra panoului zilei arată "Ziua N din 90 —
+  Luna X" (sau mesajul dedicat dacă ziua afișată e în afara ferestrei).
 - **Calendar lunar**: grid standard 7 coloane, săgeți lună precedentă/
   următoare, buton "Azi". Zilele din fereastra de 90 zile au stil vizual
   distinct (fundal/contur accent). Click pe o zi din fereastră deschide
@@ -205,26 +222,79 @@ cardul mesei respective, fără să blocheze nimic.
   per eveniment, în ordinea din array (Nolpaza AM → Gastrofait → Asketon →
   Mic dejun → Gastrofait → Asketon → Prânz → Gastrofait → Asketon → Cină →
   [Nolpaza PM] → Gastrofait culcare).
-  - Card: eticheta, iconiță tip (med/meal), `<input type="time">`, checkbox
-    "făcut", buton "Am luat/mâncat acum", (doar pe mese) avertisment dacă
-    e cazul.
+  - Card: eticheta, iconiță tip (med/meal), `<input type="time">`, butoane
+    rapide **+5min / −5min** (ajustare fină fără time picker, aplică aceeași
+    cascadă cu delta = ±5), checkbox "făcut", buton "Am luat/mâncat acum",
+    (doar pe mese) avertisment dacă e cazul.
+  - **Primul eveniment nefăcut** din listă (cronologic) primește un stil
+    vizual distinct ("următorul") — ajută la scanare rapidă când aplicația e
+    deschisă de multe ori pe zi.
+  - Un eveniment **nefăcut a cărui oră a trecut deja** față de ora curentă a
+    dispozitivului primește un indiciu vizual subtil separat de avertismentul
+    de proximitate masă (ex. etichetă discretă "restant"), fără roșu — roșul
+    rămâne rezervat strict avertismentului de proximitate.
   - Câmpuri oră de trezire/culcare specifice zilei (opțional, suprascriu
     valoarea globală doar pentru regenerarea acelei zile).
   - Buton "Resetează ziua" → confirmare (`confirm()` nativ sau dialog custom)
     → șterge intrarea din `localStorage` pentru acea zi și regenerează
     programul implicit din ora de trezire curentă a zilei.
 
+## Backup manual (Export / Import JSON)
+
+Singura persistență e `localStorage`, pe o durată de 3 luni — un buton de
+backup manual e o plasă de siguranță ieftină:
+
+- **Descarcă backup**: serializează `tracker:config` + toate cheile
+  `tracker:day:*` existente într-un singur JSON și declanșează descărcarea
+  lui (`Blob` + link temporar `download`) cu nume de forma
+  `tracker-backup-YYYY-MM-DD.json`.
+- **Încarcă backup**: input de fișier care citește un JSON în același format
+  și rescrie cheile corespunzătoare în `localStorage` (cu confirmare, pentru
+  că suprascrie datele curente).
+- Fără validare elaborată a schemei — se presupune că fișierul încărcat
+  provine dintr-un backup generat chiar de aplicație.
+
+## PWA minimal (Add to Home Screen)
+
+- `manifest.json`: nume, `short_name`, `start_url: "."`, `display:
+  "standalone"`, `background_color`/`theme_color` aliniate cu paleta
+  (`#F6F3EC`), un icon simplu (una-două dimensiuni, ex. 192px/512px, generat
+  static — o iconiță simplă pe temă, nu foto).
+- `<link rel="manifest">` + `<meta name="theme-color">` în `index.html`.
+- **Fără service worker** — nu e nevoie pentru cerința de "funcționează
+  offline" (asta ține de faptul că nu există apeluri de rețea/backend, nu de
+  cache-uirea paginii în sine); adăugarea unui service worker doar pentru
+  "Add to Home Screen" ar introduce complexitate de invalidare cache
+  disproporționată față de beneficiu. Browserul cere rețea o singură dată la
+  fiecare (re)vizitare a paginii; datele rămân intacte în `localStorage`.
+
+## Confidențialitate / acces
+
+Datele reale (orele efectiv luate, istoricul) trăiesc exclusiv în
+`localStorage`-ul dispozitivului care le-a introdus — nu ajung în repo, nu se
+urcă nicăieri automat. Ce e public pe GitHub Pages e doar codul generic al
+aplicației (schema de tratament, fără date personale).
+
+Nivel de protecție ales: **repo GitHub privat** + Pages activat pe el. Pe
+plan gratuit, asta nu oferă control de acces real (Pages rămâne accesibil la
+URL-ul `username.github.io/nume-repo` chiar dacă repo-ul e privat), dar
+elimină indexarea și descoperirea accidentală — securitate prin obscuritate,
+suficientă cât timp URL-ul nu e distribuit. README-ul menționează explicit
+această limitare, ca să nu creeze o falsă impresie de control de acces.
+
 ## Fișiere livrate
 
 - `index.html` — markup, linkuri Google Fonts (Fraunces/Lora + IBM Plex
-  Sans/Inter), `<script src="script.js">` clasic (fără `type="module"`, ca
-  să funcționeze și deschis direct din `file://`, nu doar pe GitHub Pages).
+  Sans/Inter), `<link rel="manifest">`, `<script src="script.js">` clasic
+  (fără `type="module"`, ca să funcționeze și deschis direct din `file://`,
+  nu doar pe GitHub Pages).
 - `style.css` — variabile CSS pentru paleta (`--paper`, `--ink`, `--sage`,
   `--terracotta`, `--warning-red`), stiluri responsive mobile-first,
   verificare explicită de contrast pe toate stările de buton/card.
 - `script.js` — un singur fișier, script clasic: utilitare dată/oră, generare
   program implicit, cascadă, randare calendar, randare panou zi, persistență
-  `localStorage`, event listeners.
+  `localStorage`, export/import backup, event listeners.
+- `manifest.json` + icon(uri) simple pentru PWA.
 - `README.md` — instrucțiuni scurte de deploy pe GitHub Pages (branch `main`,
   root sau `/docs`) + instrucțiuni de rulare locală offline.
 
@@ -244,6 +314,9 @@ cardul mesei respective, fără să blocheze nimic.
 
 ## În afara scopului (YAGNI)
 
-- Fără cont/sincronizare cloud, fără notificări push, fără export/import de
-  date, fără editare a schemei medicale din UI (e fixă, hardcodată).
+- Fără cont/sincronizare cloud, fără notificări push, fără editare a schemei
+  medicale din UI (e fixă, hardcodată).
 - Fără suport multi-utilizator/multi-profil.
+- Fără service worker / cache offline al paginii în sine (vezi secțiunea PWA
+  minimal) — doar manifest pentru "Add to Home Screen".
+- Fără validare de schemă la importul de backup (se presupune fișier propriu).

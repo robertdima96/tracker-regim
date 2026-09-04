@@ -345,6 +345,47 @@ if (typeof document !== 'undefined') {
     const today = new Date();
     renderDayPanel(toISODate(today));
     renderCalendar(today.getFullYear(), today.getMonth());
+
+    const config = getConfig();
+    document.getElementById('start-date-input').value = config.treatmentStartDate || '';
+    document.getElementById('wake-time-input').value = config.wakeTime;
+    document.getElementById('sleep-time-input').value = config.sleepTime;
+
+    document.getElementById('start-date-input').addEventListener('change', (e) => {
+      setConfig({ treatmentStartDate: e.target.value });
+      renderCalendar(calendarViewYear, calendarViewMonth);
+      renderDayPanel(selectedDateISO);
+    });
+    document.getElementById('wake-time-input').addEventListener('change', (e) => {
+      setConfig({ wakeTime: e.target.value });
+    });
+    document.getElementById('sleep-time-input').addEventListener('change', (e) => {
+      setConfig({ sleepTime: e.target.value });
+    });
+
+    document.getElementById('export-backup-btn').addEventListener('click', () => {
+      const blob = new Blob([exportBackup()], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'tracker-backup-' + toISODate(new Date()) + '.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('import-backup-input').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (!confirm('Încărcarea unui backup suprascrie datele curente. Continui?')) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        importBackup(reader.result);
+        const now = new Date();
+        renderCalendar(now.getFullYear(), now.getMonth());
+        renderDayPanel(selectedDateISO);
+      };
+      reader.readAsText(file);
+    });
   });
 }
 

@@ -92,6 +92,31 @@ function toggleDone(day, eventId, doneValue) {
   return day;
 }
 
+const MEAL_MED_MAP = {
+  'mic-dejun': { gastrofait: 'gastrofait-mic', asketon: 'asketon-mic' },
+  'pranz': { gastrofait: 'gastrofait-pranz', asketon: 'asketon-pranz' },
+  'cina': { gastrofait: 'gastrofait-cina', asketon: 'asketon-cina' },
+};
+
+function mealWarning(events, mealId) {
+  const map = MEAL_MED_MAP[mealId];
+  const meal = events.find(e => e.id === mealId);
+  const gastrofait = events.find(e => e.id === map.gastrofait);
+  const asketon = events.find(e => e.id === map.asketon);
+  const gapGastrofait = toMinutes(meal.time) - toMinutes(gastrofait.time);
+  const gapAsketon = toMinutes(meal.time) - toMinutes(asketon.time);
+  return gapGastrofait < 45 || gapAsketon < 15;
+}
+
+function nextEventId(events) {
+  const next = events.find(e => !e.done);
+  return next ? next.id : null;
+}
+
+function isOverdue(event, nowMinutes) {
+  return !event.done && toMinutes(event.time) < nowMinutes;
+}
+
 function renderPlaceholder() {
   document.getElementById('day-panel').innerHTML = '<p>Aplicația se construiește…</p>';
 }
@@ -104,6 +129,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     toMinutes, fromMinutes, formatHHMM, toISODate, parseISODate,
     treatmentDayNumber, isMonth1, isWithinTreatmentWindow,
-    buildDefaultEvents, applyTimeChange, markDoneNow, toggleDone
+    buildDefaultEvents, applyTimeChange, markDoneNow, toggleDone,
+    MEAL_MED_MAP, mealWarning, nextEventId, isOverdue
   };
 }

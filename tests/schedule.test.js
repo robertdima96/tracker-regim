@@ -3,7 +3,8 @@ const assert = require('node:assert/strict');
 const {
   toMinutes, fromMinutes, toISODate, parseISODate,
   treatmentDayNumber, isMonth1, isWithinTreatmentWindow,
-  buildDefaultEvents, applyTimeChange, markDoneNow, toggleDone
+  buildDefaultEvents, applyTimeChange, markDoneNow, toggleDone,
+  mealWarning, nextEventId, isOverdue
 } = require('../script.js');
 
 test('toMinutes converts HH:MM to minutes since midnight', () => {
@@ -138,4 +139,49 @@ test('toggleDone flips the done flag without changing any times', () => {
   assert.equal(day.events[0].time, '07:00');
   toggleDone(day, 'a', false);
   assert.equal(day.events[0].done, false);
+});
+
+function mealDay() {
+  return [
+    { id: 'gastrofait-mic', type: 'med', time: '07:10', done: false },
+    { id: 'asketon-mic', type: 'med', time: '07:50', done: false },
+    { id: 'mic-dejun', type: 'meal', time: '08:10', done: false },
+  ];
+}
+
+test('mealWarning is false when both gaps meet the thresholds', () => {
+  assert.equal(mealWarning(mealDay(), 'mic-dejun'), false); // gaps: 60, 20
+});
+
+test('mealWarning is true when the gastrofait gap is under 45 minutes', () => {
+  const events = mealDay();
+  events[0].time = '07:40'; // gap becomes 30
+  assert.equal(mealWarning(events, 'mic-dejun'), true);
+});
+
+test('mealWarning is true when the asketon gap is under 15 minutes', () => {
+  const events = mealDay();
+  events[1].time = '08:00'; // gap becomes 10
+  assert.equal(mealWarning(events, 'mic-dejun'), true);
+});
+
+test('mealWarning is true when a dose lands after the meal (negative gap)', () => {
+  const events = mealDay();
+  events[0].time = '08:20';
+  assert.equal(mealWarning(events, 'mic-dejun'), true);
+});
+
+test('nextEventId returns the first not-done event, or null if all done', () => {
+  const events = [
+    { id: 'a', done: true }, { id: 'b', done: false }, { id: 'c', done: false }
+  ];
+  assert.equal(nextEventId(events), 'b');
+  events.forEach(e => e.done = true);
+  assert.equal(nextEventId(events), null);
+});
+
+test('isOverdue is true only for not-done events whose time has passed', () => {
+  assert.equal(isOverdue({ time: '07:00', done: false }, toMinutes('08:00')), true);
+  assert.equal(isOverdue({ time: '07:00', done: true }, toMinutes('08:00')), false);
+  assert.equal(isOverdue({ time: '09:00', done: false }, toMinutes('08:00')), false);
 });

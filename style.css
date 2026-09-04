@@ -1,0 +1,74 @@
+:root {
+  --paper: #F6F3EC;
+  --paper-card: #FFFFFF;
+  --ink: #2B2822;
+  --muted: #6B6558;
+  --line: #E3DDCE;
+  --sage: #5F7A5F;
+  --sage-soft: #DCE8DC;
+  --terracotta: #A6543D;
+  --terracotta-soft: #F3DED4;
+  --warn: #B3261E;
+  --warn-soft: #FBE4E1;
+  --white: #FFFFFF;
+  --font-serif: 'Fraunces', Georgia, serif;
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  line-height: 1.4;
+}
+
+h1, .event-time, .banner-title {
+  font-family: var(--font-serif);
+}
+
+.app-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.header-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.header-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  color: var(--muted);
+}
+
+button {
+  font-family: var(--font-sans);
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 0.9rem;
+  cursor: pointer;
+  background: var(--sage);
+  color: var(--white);
+}
+
+button.terracotta { background: var(--terracotta); color: var(--white); }
+button.ghost { background: var(--paper-card); color: var(--ink); border: 1px solid var(--line); }
+
+main { max-width: 480px; margin: 0 auto; padding: 1rem; }
+
+.banner {
+  background: var(--sage-soft);
+  color: var(--ink);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-family: var(--font-serif);
+}

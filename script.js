@@ -34,6 +34,35 @@ function isWithinTreatmentWindow(dayNumber) {
   return dayNumber >= 1 && dayNumber <= 90;
 }
 
+function buildDefaultEvents(wakeTime, sleepTime, month1) {
+  const W = toMinutes(wakeTime);
+  const S = toMinutes(sleepTime);
+  const breakfast = W + 70;
+  const lunch = breakfast + 300;
+  const dinner = S - 240;
+
+  const events = [
+    { id: 'nolpaza-am', type: 'med', label: 'Nolpaza 40mg', time: fromMinutes(W), done: false },
+    { id: 'gastrofait-mic', type: 'med', label: 'Gastrofait', time: fromMinutes(breakfast - 60), done: false },
+    { id: 'asketon-mic', type: 'med', label: 'Asketon', time: fromMinutes(breakfast - 20), done: false },
+    { id: 'mic-dejun', type: 'meal', label: 'Mic dejun', time: fromMinutes(breakfast), done: false },
+    { id: 'gastrofait-pranz', type: 'med', label: 'Gastrofait', time: fromMinutes(lunch - 60), done: false },
+    { id: 'asketon-pranz', type: 'med', label: 'Asketon', time: fromMinutes(lunch - 20), done: false },
+    { id: 'pranz', type: 'meal', label: 'Prânz', time: fromMinutes(lunch), done: false },
+    { id: 'gastrofait-cina', type: 'med', label: 'Gastrofait', time: fromMinutes(dinner - 60), done: false },
+    { id: 'asketon-cina', type: 'med', label: 'Asketon', time: fromMinutes(dinner - 20), done: false },
+    { id: 'cina', type: 'meal', label: 'Cină', time: fromMinutes(dinner), done: false },
+  ];
+
+  if (month1) {
+    events.push({ id: 'nolpaza-pm', type: 'med', label: 'Nolpaza 40mg', time: fromMinutes(dinner + 135), done: false });
+  }
+
+  events.push({ id: 'gastrofait-culcare', type: 'med', label: 'Gastrofait', time: fromMinutes(S - 10), done: false });
+
+  return events;
+}
+
 function renderPlaceholder() {
   document.getElementById('day-panel').innerHTML = '<p>Aplicația se construiește…</p>';
 }
@@ -45,6 +74,7 @@ if (typeof document !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     toMinutes, fromMinutes, formatHHMM, toISODate, parseISODate,
-    treatmentDayNumber, isMonth1, isWithinTreatmentWindow
+    treatmentDayNumber, isMonth1, isWithinTreatmentWindow,
+    buildDefaultEvents
   };
 }

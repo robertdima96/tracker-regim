@@ -2,7 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   toMinutes, fromMinutes, toISODate, parseISODate,
-  treatmentDayNumber, isMonth1, isWithinTreatmentWindow
+  treatmentDayNumber, isMonth1, isWithinTreatmentWindow,
+  buildDefaultEvents
 } = require('../script.js');
 
 test('toMinutes converts HH:MM to minutes since midnight', () => {
@@ -41,4 +42,40 @@ test('isWithinTreatmentWindow covers exactly days 1..90', () => {
   assert.equal(isWithinTreatmentWindow(1), true);
   assert.equal(isWithinTreatmentWindow(90), true);
   assert.equal(isWithinTreatmentWindow(91), false);
+});
+
+test('buildDefaultEvents produces 12 events in month 1, in the spec order', () => {
+  const events = buildDefaultEvents('07:00', '23:00', true);
+  assert.deepEqual(events.map(e => e.id), [
+    'nolpaza-am', 'gastrofait-mic', 'asketon-mic', 'mic-dejun',
+    'gastrofait-pranz', 'asketon-pranz', 'pranz',
+    'gastrofait-cina', 'asketon-cina', 'cina',
+    'nolpaza-pm', 'gastrofait-culcare'
+  ]);
+});
+
+test('buildDefaultEvents omits nolpaza-pm outside month 1', () => {
+  const events = buildDefaultEvents('07:00', '23:00', false);
+  assert.equal(events.some(e => e.id === 'nolpaza-pm'), false);
+  assert.equal(events.length, 11);
+});
+
+test('buildDefaultEvents computes times per the spec heuristics', () => {
+  const events = buildDefaultEvents('07:00', '23:00', true);
+  const byId = Object.fromEntries(events.map(e => [e.id, e.time]));
+  assert.equal(byId['nolpaza-am'], '07:00');
+  assert.equal(byId['mic-dejun'], '08:10');
+  assert.equal(byId['gastrofait-mic'], '07:10');
+  assert.equal(byId['asketon-mic'], '07:50');
+  assert.equal(byId['pranz'], '13:10');
+  assert.equal(byId['cina'], '19:00');
+  assert.equal(byId['gastrofait-cina'], '18:00');
+  assert.equal(byId['asketon-cina'], '18:40');
+  assert.equal(byId['nolpaza-pm'], '21:15');
+  assert.equal(byId['gastrofait-culcare'], '22:50');
+});
+
+test('buildDefaultEvents: every event starts as not done', () => {
+  const events = buildDefaultEvents('07:00', '23:00', true);
+  assert.ok(events.every(e => e.done === false));
 });

@@ -117,6 +117,71 @@ function isOverdue(event, nowMinutes) {
   return !event.done && toMinutes(event.time) < nowMinutes;
 }
 
+const CONFIG_KEY = 'tracker:config';
+const DEFAULT_CONFIG = { treatmentStartDate: null, wakeTime: '07:00', sleepTime: '23:00' };
+
+function getConfig() {
+  const raw = localStorage.getItem(CONFIG_KEY);
+  return raw ? Object.assign({}, DEFAULT_CONFIG, JSON.parse(raw)) : Object.assign({}, DEFAULT_CONFIG);
+}
+
+function setConfig(partial) {
+  const merged = Object.assign(getConfig(), partial);
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(merged));
+}
+
+function dayKey(dateISO) {
+  return 'tracker:day:' + dateISO;
+}
+
+function getDay(dateISO) {
+  const raw = localStorage.getItem(dayKey(dateISO));
+  if (raw) {
+    const day = JSON.parse(raw);
+    day.persisted = true;
+    return day;
+  }
+  const config = getConfig();
+  const dayNumber = config.treatmentStartDate ? treatmentDayNumber(dateISO, config.treatmentStartDate) : 0;
+  const month1 = isMonth1(dayNumber);
+  return {
+    date: dateISO,
+    wakeTime: config.wakeTime,
+    sleepTime: config.sleepTime,
+    events: buildDefaultEvents(config.wakeTime, config.sleepTime, month1),
+    persisted: false,
+  };
+}
+
+function persistDay(day) {
+  const toSave = { date: day.date, wakeTime: day.wakeTime, sleepTime: day.sleepTime, events: day.events };
+  localStorage.setItem(dayKey(day.date), JSON.stringify(toSave));
+}
+
+function resetDay(dateISO) {
+  localStorage.removeItem(dayKey(dateISO));
+  return getDay(dateISO);
+}
+
+function exportBackup() {
+  const data = { config: getConfig(), days: {} };
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.indexOf('tracker:day:') === 0) {
+      data.days[key.slice('tracker:day:'.length)] = JSON.parse(localStorage.getItem(key));
+    }
+  }
+  return JSON.stringify(data, null, 2);
+}
+
+function importBackup(jsonString) {
+  const data = JSON.parse(jsonString);
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(data.config));
+  Object.keys(data.days).forEach(dateISO => {
+    localStorage.setItem(dayKey(dateISO), JSON.stringify(data.days[dateISO]));
+  });
+}
+
 function renderPlaceholder() {
   document.getElementById('day-panel').innerHTML = '<p>Aplicația se construiește…</p>';
 }
@@ -130,6 +195,7 @@ if (typeof module !== 'undefined' && module.exports) {
     toMinutes, fromMinutes, formatHHMM, toISODate, parseISODate,
     treatmentDayNumber, isMonth1, isWithinTreatmentWindow,
     buildDefaultEvents, applyTimeChange, markDoneNow, toggleDone,
-    MEAL_MED_MAP, mealWarning, nextEventId, isOverdue
+    MEAL_MED_MAP, mealWarning, nextEventId, isOverdue,
+    getConfig, setConfig, getDay, persistDay, resetDay, exportBackup, importBackup
   };
 }

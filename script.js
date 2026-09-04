@@ -63,6 +63,35 @@ function buildDefaultEvents(wakeTime, sleepTime, month1) {
   return events;
 }
 
+function applyTimeChange(day, eventId, newTime) {
+  const events = day.events;
+  const idx = events.findIndex(e => e.id === eventId);
+  const delta = toMinutes(newTime) - toMinutes(events[idx].time);
+
+  events[idx].time = newTime;
+
+  if (delta !== 0) {
+    for (let i = idx + 1; i < events.length; i++) {
+      if (!events[i].done) {
+        events[i].time = fromMinutes(toMinutes(events[i].time) + delta);
+      }
+    }
+  }
+  return day;
+}
+
+function markDoneNow(day, eventId, nowTime) {
+  const time = nowTime || formatHHMM(new Date());
+  applyTimeChange(day, eventId, time);
+  day.events.find(e => e.id === eventId).done = true;
+  return day;
+}
+
+function toggleDone(day, eventId, doneValue) {
+  day.events.find(e => e.id === eventId).done = doneValue;
+  return day;
+}
+
 function renderPlaceholder() {
   document.getElementById('day-panel').innerHTML = '<p>Aplicația se construiește…</p>';
 }
@@ -75,6 +104,6 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     toMinutes, fromMinutes, formatHHMM, toISODate, parseISODate,
     treatmentDayNumber, isMonth1, isWithinTreatmentWindow,
-    buildDefaultEvents
+    buildDefaultEvents, applyTimeChange, markDoneNow, toggleDone
   };
 }

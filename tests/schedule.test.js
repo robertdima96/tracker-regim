@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const {
   toMinutes, fromMinutes, toISODate, parseISODate,
   treatmentDayNumber, isMonth1, isWithinTreatmentWindow,
-  buildDefaultEvents
+  buildDefaultEvents, applyTimeChange, markDoneNow, toggleDone
 } = require('../script.js');
 
 test('toMinutes converts HH:MM to minutes since midnight', () => {
@@ -78,4 +78,64 @@ test('buildDefaultEvents computes times per the spec heuristics', () => {
 test('buildDefaultEvents: every event starts as not done', () => {
   const events = buildDefaultEvents('07:00', '23:00', true);
   assert.ok(events.every(e => e.done === false));
+});
+
+function sampleDay() {
+  return {
+    events: [
+      { id: 'a', type: 'med', label: 'A', time: '07:00', done: false },
+      { id: 'b', type: 'med', label: 'B', time: '07:10', done: false },
+      { id: 'c', type: 'meal', label: 'C', time: '08:00', done: false },
+      { id: 'd', type: 'med', label: 'D', time: '12:00', done: false },
+    ]
+  };
+}
+
+test('applyTimeChange shifts later, not-done events by the same positive delta', () => {
+  const day = sampleDay();
+  applyTimeChange(day, 'a', '07:30'); // +30 min
+  assert.equal(day.events[0].time, '07:30');
+  assert.equal(day.events[1].time, '07:40');
+  assert.equal(day.events[2].time, '08:30');
+  assert.equal(day.events[3].time, '12:30');
+});
+
+test('applyTimeChange shifts later events by a negative delta symmetrically', () => {
+  const day = sampleDay();
+  applyTimeChange(day, 'a', '06:40'); // -20 min
+  assert.equal(day.events[1].time, '06:50');
+  assert.equal(day.events[2].time, '07:40');
+  assert.equal(day.events[3].time, '11:40');
+});
+
+test('applyTimeChange never moves events before the changed one', () => {
+  const day = sampleDay();
+  applyTimeChange(day, 'c', '09:00');
+  assert.equal(day.events[0].time, '07:00');
+  assert.equal(day.events[1].time, '07:10');
+});
+
+test('applyTimeChange never moves events already marked done', () => {
+  const day = sampleDay();
+  day.events[2].done = true; // 'c' is done
+  applyTimeChange(day, 'a', '07:30');
+  assert.equal(day.events[2].time, '08:00'); // untouched
+  assert.equal(day.events[3].time, '12:30'); // still shifts, it's after 'c' but not done
+});
+
+test('markDoneNow sets the time and marks done, cascading like applyTimeChange', () => {
+  const day = sampleDay();
+  markDoneNow(day, 'a', '07:45');
+  assert.equal(day.events[0].time, '07:45');
+  assert.equal(day.events[0].done, true);
+  assert.equal(day.events[1].time, '07:55');
+});
+
+test('toggleDone flips the done flag without changing any times', () => {
+  const day = sampleDay();
+  toggleDone(day, 'a', true);
+  assert.equal(day.events[0].done, true);
+  assert.equal(day.events[0].time, '07:00');
+  toggleDone(day, 'a', false);
+  assert.equal(day.events[0].done, false);
 });

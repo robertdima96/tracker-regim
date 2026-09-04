@@ -182,12 +182,109 @@ function importBackup(jsonString) {
   });
 }
 
-function renderPlaceholder() {
-  document.getElementById('day-panel').innerHTML = '<p>Aplicația se construiește…</p>';
+let selectedDateISO = null;
+
+function renderDayPanel(dateISO) {
+  selectedDateISO = dateISO;
+  const config = getConfig();
+  const container = document.getElementById('day-panel');
+  const bannerEl = document.getElementById('banner');
+
+  if (!config.treatmentStartDate) {
+    bannerEl.textContent = 'Setează mai întâi data de start a tratamentului.';
+    container.innerHTML = '';
+    return;
+  }
+
+  const dayNumber = treatmentDayNumber(dateISO, config.treatmentStartDate);
+
+  if (!isWithinTreatmentWindow(dayNumber)) {
+    bannerEl.textContent = 'În afara perioadei de tratament.';
+    container.innerHTML = '';
+    return;
+  }
+
+  bannerEl.textContent = 'Ziua ' + dayNumber + ' din 90 — ' + (isMonth1(dayNumber) ? 'Luna 1' : 'Lunile 2-3');
+
+  const day = getDay(dateISO);
+  const nowMinutes = (dateISO === toISODate(new Date())) ? toMinutes(formatHHMM(new Date())) : -1;
+  const nextId = nextEventId(day.events);
+
+  const cards = day.events.map(event => {
+    const overdue = nowMinutes >= 0 && isOverdue(event, nowMinutes);
+    const classes = ['event-card', event.type, event.id === nextId ? 'next' : '', overdue ? 'overdue' : ''].filter(Boolean).join(' ');
+    const warn = event.type === 'meal' && mealWarning(day.events, event.id);
+    return (
+      '<li class="' + classes + '" data-id="' + event.id + '">' +
+        '<div class="event-row">' +
+          '<span class="event-label">' + event.label + '</span>' +
+          '<span class="time-group">' +
+            '<input type="time" class="event-time" value="' + event.time + '" data-id="' + event.id + '">' +
+            '<button type="button" class="step-btn ghost" data-step="-5" data-id="' + event.id + '">-5</button>' +
+            '<button type="button" class="step-btn ghost" data-step="5" data-id="' + event.id + '">+5</button>' +
+          '</span>' +
+          '<label><input type="checkbox" class="event-done" data-id="' + event.id + '" ' + (event.done ? 'checked' : '') + '> făcut</label>' +
+          '<button type="button" class="mark-now terracotta" data-id="' + event.id + '">Am luat/mâncat acum</button>' +
+        '</div>' +
+        (warn ? '<div class="warning">⚠ prea aproape de masă</div>' : '') +
+      '</li>'
+    );
+  }).join('');
+
+  container.innerHTML =
+    '<ul class="timeline">' + cards + '</ul>' +
+    '<button type="button" id="reset-day-btn" class="ghost">Resetează ziua</button>';
+
+  attachDayPanelListeners(day);
+}
+
+function attachDayPanelListeners(day) {
+  const container = document.getElementById('day-panel');
+
+  container.querySelectorAll('.event-time').forEach(input => {
+    input.addEventListener('change', () => {
+      applyTimeChange(day, input.dataset.id, input.value);
+      persistDay(day);
+      renderDayPanel(day.date);
+    });
+  });
+
+  container.querySelectorAll('.step-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const event = day.events.find(e => e.id === btn.dataset.id);
+      const newTime = fromMinutes(toMinutes(event.time) + Number(btn.dataset.step));
+      applyTimeChange(day, btn.dataset.id, newTime);
+      persistDay(day);
+      renderDayPanel(day.date);
+    });
+  });
+
+  container.querySelectorAll('.event-done').forEach(checkbox => {
+    checkbox.addEventListener('change', () => {
+      toggleDone(day, checkbox.dataset.id, checkbox.checked);
+      persistDay(day);
+      renderDayPanel(day.date);
+    });
+  });
+
+  container.querySelectorAll('.mark-now').forEach(btn => {
+    btn.addEventListener('click', () => {
+      markDoneNow(day, btn.dataset.id);
+      persistDay(day);
+      renderDayPanel(day.date);
+    });
+  });
+
+  document.getElementById('reset-day-btn').addEventListener('click', () => {
+    if (confirm('Sigur resetezi ziua la programul implicit?')) {
+      resetDay(day.date);
+      renderDayPanel(day.date);
+    }
+  });
 }
 
 if (typeof document !== 'undefined') {
-  document.addEventListener('DOMContentLoaded', renderPlaceholder);
+  document.addEventListener('DOMContentLoaded', () => renderDayPanel(toISODate(new Date())));
 }
 
 if (typeof module !== 'undefined' && module.exports) {

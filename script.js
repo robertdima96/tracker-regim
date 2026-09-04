@@ -283,8 +283,69 @@ function attachDayPanelListeners(day) {
   });
 }
 
+let calendarViewYear, calendarViewMonth;
+
+function renderCalendar(viewYear, viewMonth) {
+  calendarViewYear = viewYear;
+  calendarViewMonth = viewMonth;
+  const config = getConfig();
+  const container = document.getElementById('calendar');
+
+  const first = new Date(viewYear, viewMonth, 1);
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const leadingBlanks = (first.getDay() + 6) % 7; // Monday-first grid
+
+  let cells = '';
+  for (let i = 0; i < leadingBlanks; i++) cells += '<div class="calendar-day empty"></div>';
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(viewYear, viewMonth, d);
+    const iso = toISODate(date);
+    const dayNumber = config.treatmentStartDate ? treatmentDayNumber(iso, config.treatmentStartDate) : 0;
+    const classes = ['calendar-day'];
+    if (isWithinTreatmentWindow(dayNumber)) classes.push('in-window');
+    if (iso === selectedDateISO) classes.push('selected');
+    cells += '<div class="' + classes.join(' ') + '" data-date="' + iso + '">' + d + '</div>';
+  }
+
+  const monthLabel = first.toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' });
+
+  container.innerHTML =
+    '<div class="calendar-header">' +
+      '<button type="button" id="cal-prev" class="ghost">‹</button>' +
+      '<strong>' + monthLabel + '</strong>' +
+      '<button type="button" id="cal-today" class="ghost">Azi</button>' +
+      '<button type="button" id="cal-next" class="ghost">›</button>' +
+    '</div>' +
+    '<div class="calendar-grid">' + cells + '</div>';
+
+  document.getElementById('cal-prev').addEventListener('click', () => {
+    const prev = new Date(viewYear, viewMonth - 1, 1);
+    renderCalendar(prev.getFullYear(), prev.getMonth());
+  });
+  document.getElementById('cal-next').addEventListener('click', () => {
+    const next = new Date(viewYear, viewMonth + 1, 1);
+    renderCalendar(next.getFullYear(), next.getMonth());
+  });
+  document.getElementById('cal-today').addEventListener('click', () => {
+    const todayDate = new Date();
+    renderCalendar(todayDate.getFullYear(), todayDate.getMonth());
+    renderDayPanel(toISODate(todayDate));
+  });
+  container.querySelectorAll('.calendar-day[data-date]').forEach(cell => {
+    cell.addEventListener('click', () => {
+      renderDayPanel(cell.dataset.date);
+      renderCalendar(calendarViewYear, calendarViewMonth);
+    });
+  });
+}
+
 if (typeof document !== 'undefined') {
-  document.addEventListener('DOMContentLoaded', () => renderDayPanel(toISODate(new Date())));
+  document.addEventListener('DOMContentLoaded', () => {
+    const today = new Date();
+    renderDayPanel(toISODate(today));
+    renderCalendar(today.getFullYear(), today.getMonth());
+  });
 }
 
 if (typeof module !== 'undefined' && module.exports) {

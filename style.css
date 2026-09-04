@@ -122,3 +122,19 @@ main { max-width: 480px; margin: 0 auto; padding: 1rem; }
 
 .step-btn { padding: 0.2rem 0.5rem; font-size: 0.8rem; }
 .time-group { display: flex; align-items: center; gap: 0.3rem; }
+
+.calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 1rem; }
+.calendar-day {
+  aspect-ratio: 1;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  background: var(--paper-card);
+  color: var(--ink);
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: 1px solid var(--line);
+}
+.calendar-day.in-window { background: var(--sage-soft); border-color: var(--sage); }
+.calendar-day.selected { outline: 2px solid var(--terracotta); }
+.calendar-day.empty { visibility: hidden; }

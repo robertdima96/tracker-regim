@@ -275,12 +275,14 @@ Datele reale (orele efectiv luate, istoricul) trăiesc exclusiv în
 urcă nicăieri automat. Ce e public pe GitHub Pages e doar codul generic al
 aplicației (schema de tratament, fără date personale).
 
-Nivel de protecție ales: **repo GitHub privat** + Pages activat pe el. Pe
-plan gratuit, asta nu oferă control de acces real (Pages rămâne accesibil la
-URL-ul `username.github.io/nume-repo` chiar dacă repo-ul e privat), dar
-elimină indexarea și descoperirea accidentală — securitate prin obscuritate,
-suficientă cât timp URL-ul nu e distribuit. README-ul menționează explicit
-această limitare, ca să nu creeze o falsă impresie de control de acces.
+Nivel de protecție ales inițial: repo GitHub privat + Pages activat pe el.
+**Corecție descoperită la deploy**: pe plan gratuit, GitHub Pages nu poate fi
+activat deloc pe un repo privat (API-ul respinge cererea cu 422, cere Pro/
+Team/Enterprise) — nu doar că ar fi "tehnic accesibil dar obscur", cum se
+presupusese aici inițial. Repo-ul final e deci **public**, cu singura
+protecție reală fiind că URL-ul nu e indexat/distribuit. README-ul
+documentează explicit limitarea reală, ca să nu creeze o falsă impresie de
+control de acces.
 
 ## Fișiere livrate
 

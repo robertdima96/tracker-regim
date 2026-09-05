@@ -263,3 +263,11 @@ A strong early signal is not downloads. It is behavior such as:
 > A user with a complex treatment stops maintaining a parallel calculator/alarm/note workflow and relies on DoseFlow’s Today timeline for several weeks.
 
 That should be the standard for deciding whether to invest beyond the personal MVP.
+
+## 12. Technical direction
+
+Phase A's platform, storage, and UI stack are decided and recorded in
+`DECISIONS.md` — Capacitor + Svelte + TypeScript + SQLite. These are
+build-mechanism choices; they do not change the product vision, principles,
+or boundaries described above. Whether DoseFlow becomes a personal tool or
+a shippable product is deliberately still open — see `DECISIONS.md`.

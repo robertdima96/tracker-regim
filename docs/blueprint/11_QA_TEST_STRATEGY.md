@@ -274,3 +274,35 @@ For initial real treatment:
 - no “I know what the app meant” exceptions.
 
 Trust must be earned through boring correctness.
+
+## 20. Toolchain and file mapping
+
+Concrete tooling for the tests described in §2–§16, given the Capacitor +
+Svelte + TypeScript stack (`DECISIONS.md`, `08_ENGINEERING_ARCHITECTURE.md`):
+
+- **Level 1 (scheduler unit tests):** Vitest. File:
+  `src/scheduler/__tests__/schedule.spec.ts`. This is where the T1–T7
+  cases from `06_SCHEDULING_ENGINE_SPEC.md` §23 and the SCH-001..006 cases
+  from §4 of this document live — they are the same test set described
+  twice at different levels of the doc set, not two separate suites.
+- **Level 1 (property-based tests, §5):** Vitest + `fast-check`. File:
+  `src/scheduler/__tests__/properties.spec.ts`.
+- **Level 2 (domain/application integration):** Vitest, running against a
+  real in-memory/temp-file SQLite instance via
+  `@capacitor-community/sqlite`'s Node/Electron test mode (not a mock) —
+  per this project's existing preference for integration tests to hit a
+  real database. File: `src/database/__tests__/*.spec.ts`.
+- **Level 3 (notification integration):** cannot be fully automated —
+  `@capacitor/local-notifications` requires a real device/OS. Cover what's
+  automatable (the diff algorithm in `09_NOTIFICATIONS_AND_BACKGROUND.md`
+  §4, in isolation from the OS calls) with Vitest at
+  `src/notifications/__tests__/planner.spec.ts`; the rest is the manual
+  device matrix in §9/§17 of this document and §17 of
+  `09_NOTIFICATIONS_AND_BACKGROUND.md`.
+- **Level 4 (UI tests):** Vitest + `@testing-library/svelte`, one test
+  file per screen component under `src/screens/__tests__/`.
+- **Level 5 (manual device matrix):** unchanged — see §17.
+
+Automated end-to-end testing (driving the real Capacitor app on a device
+or emulator) is deferred past Phase A; the manual device matrix covers
+this gap until it's worth the setup cost.

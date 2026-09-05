@@ -74,6 +74,21 @@ export async function updateEventTemplate(driver: SqlDriver, template: StoredEve
   )
 }
 
+/**
+ * "Delete" is a deactivation (active_until set), not a row delete — this
+ * preserves any daily_events/administration_records history that already
+ * references this template (07_DATA_MODEL.md §4: plan changes must not
+ * erase what was true when history was recorded), and avoids the FK
+ * constraint a hard delete would hit the moment any history exists.
+ *
+ * `lastActiveDate` is inclusive (the template still counts as active on
+ * that date) — pass `previousLocalDate(today)` to remove it starting
+ * today, per listEventTemplatesActiveOn's `active_until >= date` check.
+ */
+export async function deactivateEventTemplate(driver: SqlDriver, templateId: string, lastActiveDate: LocalDate): Promise<void> {
+  await driver.execute('UPDATE event_templates SET active_until = ? WHERE id = ?', [lastActiveDate, templateId])
+}
+
 export async function listEventTemplatesActiveOn(driver: SqlDriver, planId: string, date: LocalDate): Promise<StoredEventTemplate[]> {
   const rows = await driver.query<EventTemplateRow>(
     `SELECT * FROM event_templates

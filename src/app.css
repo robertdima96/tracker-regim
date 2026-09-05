@@ -302,6 +302,50 @@ body {
   font-size: 0.92rem;
 }
 
+/* "Take this [60] minutes [before] [Breakfast]" — reads as a sentence
+   rather than a stack of labeled fields (matches the rule-builder mockup). */
+.sentence-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+}
+.sentence-input {
+  font: inherit;
+  width: 64px;
+  text-align: center;
+  padding: 8px 6px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+.sentence-select {
+  font: inherit;
+  font-weight: 600;
+  color: var(--sage-dark);
+  padding: 8px 30px 8px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--paper-raised);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9' fill='none'%3E%3Cpath d='M1 1L7 7L13 1' stroke='%234a7a5e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+.preview-text {
+  font-style: italic;
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+  background: var(--sage-bg);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 0;
+}
+
 .kind-dot {
   display: inline-block;
   width: 10px;
@@ -321,10 +365,57 @@ body {
   background: var(--ink-muted);
 }
 
+.event-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 999px;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+.event-icon-medication {
+  background: var(--sage-bg);
+}
+.event-icon-meal {
+  background: var(--terracotta-bg);
+}
+.event-icon-wake,
+.event-icon-sleep {
+  background: #eceae4;
+}
+.event-icon-sm {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  font-size: 0.9rem;
+}
+
 .event-label {
   font-family: var(--font-serif);
   font-weight: 600;
   font-size: 1.05rem;
+}
+
+.event-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hero-card {
+  border: 1.5px solid var(--sage);
+  background: linear-gradient(180deg, #fffdf9 0%, var(--sage-bg) 220%);
+}
+.hero-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sage-dark);
 }
 
 .badge {

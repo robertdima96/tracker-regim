@@ -4,7 +4,10 @@
   import type { TreatmentPlan } from '../domain/types'
   import { listEventTemplatesActiveOn, type StoredEventTemplate } from '../database/repositories/eventTemplateRepository'
   import { listConstraintsByPlan, type StoredConstraint } from '../database/repositories/constraintRepository'
+  import { removeDose, removeMedication } from '../app/medicationService'
+  import { todayLocalDate } from '../scheduler/time'
   import AddMedicationForm from './AddMedicationForm.svelte'
+  import EventIcon from '../components/EventIcon.svelte'
 
   let {
     driver,
@@ -25,6 +28,7 @@
   let templates = $state<StoredEventTemplate[]>([])
   let constraints = $state<StoredConstraint[]>([])
   let showAddForm = $state(false)
+  let removingKey = $state<string | undefined>(undefined)
 
   async function refresh() {
     ;[templates, constraints] = await Promise.all([
@@ -59,6 +63,26 @@
     if (c.maxOffsetMinutes === c.minOffsetMinutes) return `Exactly ${c.minOffsetMinutes} min ${c.relation} ${anchor}`
     return `${c.minOffsetMinutes}–${c.maxOffsetMinutes} min ${c.relation} ${anchor}`
   }
+
+  async function handleRemoveDose(dose: StoredEventTemplate) {
+    removingKey = dose.id
+    try {
+      await removeDose(driver, dose.id, todayLocalDate(plan.timezone))
+      await refresh()
+    } finally {
+      removingKey = undefined
+    }
+  }
+
+  async function handleRemoveMedication(name: string, doses: StoredEventTemplate[]) {
+    removingKey = name
+    try {
+      await removeMedication(driver, doses.map((d) => d.id), todayLocalDate(plan.timezone))
+      await refresh()
+    } finally {
+      removingKey = undefined
+    }
+  }
 </script>
 
 <div class="screen">
@@ -76,11 +100,30 @@
 
   {#if groupedByName.length > 0}
     <div class="card-list">
-      {#each groupedByName as [name, doses]}
+      {#each groupedByName as [name, doses] (name)}
         <div class="card">
-          <span class="event-label"><span class="kind-dot medication"></span>{name}</span>
-          {#each doses as dose}
-            <span class="muted">{ruleSummary(dose)}</span>
+          <div class="row">
+            <div class="event-row">
+              <EventIcon kind="medication" />
+              <span class="event-label">{name}</span>
+            </div>
+            <button
+              type="button"
+              class="btn btn-danger"
+              style="padding:4px 10px;"
+              disabled={removingKey === name}
+              onclick={() => handleRemoveMedication(name, doses)}
+            >
+              Delete
+            </button>
+          </div>
+          {#each doses as dose (dose.id)}
+            <div class="dose-row">
+              <span>{ruleSummary(dose)}</span>
+              <button type="button" class="btn btn-secondary" style="padding:4px 10px;" disabled={removingKey === dose.id} onclick={() => handleRemoveDose(dose)}>
+                Remove dose
+              </button>
+            </div>
           {/each}
         </div>
       {/each}

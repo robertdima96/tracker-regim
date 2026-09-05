@@ -8,6 +8,7 @@
   import { minutesToLocalTime, todayLocalDate } from '../scheduler/time'
   import { activatePlan } from '../app/planService'
   import { newId } from '../domain/id'
+  import EventIcon from '../components/EventIcon.svelte'
 
   let {
     driver,
@@ -82,7 +83,10 @@
     <div class="card-list">
       {#each [...preview.events].sort((a, b) => a.currentWindow.earliest.localeCompare(b.currentWindow.earliest)) as event}
         <div class="card row">
-          <span class="event-label"><span class="kind-dot {event.kind}"></span>{labelByTemplateId[event.templateId] ?? event.templateId}</span>
+          <div class="event-row">
+            <EventIcon kind={event.kind} />
+            <span class="event-label">{labelByTemplateId[event.templateId] ?? event.templateId}</span>
+          </div>
           <span class="badge {event.kind === 'medication' ? 'badge-sage' : 'badge-terracotta'}">{formatWindow(event.currentWindow)}</span>
         </div>
       {/each}

@@ -33,3 +33,8 @@ export function compareInstants(a: Instant, b: Instant): number {
 export function todayLocalDate(timezone: string): LocalDate {
   return DateTime.now().setZone(timezone).toFormat('yyyy-MM-dd')
 }
+
+export function previousLocalDate(date: LocalDate): LocalDate {
+  const [year, month, day] = date.split('-').map(Number)
+  return DateTime.fromObject({ year, month, day }, { zone: 'utc' }).minus({ days: 1 }).toFormat('yyyy-MM-dd')
+}

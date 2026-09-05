@@ -8,6 +8,7 @@
   import { createConstraint } from '../database/repositories/constraintRepository'
   import { newId } from '../domain/id'
   import TimeField from '../components/TimeField.svelte'
+  import { addMinutes, minutesToLocalTime } from '../scheduler/time'
 
   let {
     driver,
@@ -83,6 +84,26 @@
     if (d.ruleType === 'range') return `${d.minMinutes}–${d.maxMinutes} min ${rel} ${anchorLabel(d.anchorId)}`
     return `At least ${d.minMinutes} min ${rel} ${anchorLabel(d.anchorId)}`
   }
+
+  // A rough illustrative preview only — the real schedule (actual events,
+  // conflicts with other rules, day-boundary clamping) is computed for
+  // real by the scheduler at Plan Review / Today, not here.
+  const draftPreview = $derived.by(() => {
+    if (draft.timingType === 'fixed') return `Scheduled at ${draft.fixedTime} every day.`
+    const anchor = anchors.find((a) => a.id === draft.anchorId)
+    if (!anchor?.preferredWindow) return ''
+    const anchorTime = minutesToLocalTime(anchor.preferredWindow.earliest, plan.timezone)
+    const sign = draft.relation === 'before' ? -1 : 1
+    const max = draft.ruleType === 'range' ? draft.maxMinutes : draft.minMinutes
+    const timeAtMin = minutesToLocalTime(addMinutes(anchor.preferredWindow.earliest, sign * draft.minMinutes), plan.timezone)
+    const timeAtMax = minutesToLocalTime(addMinutes(anchor.preferredWindow.earliest, sign * max), plan.timezone)
+    if (draft.ruleType === 'exact') return `If ${anchor.label} is ${anchorTime}, this dose will be scheduled at ${timeAtMin}.`
+    if (draft.ruleType === 'range') {
+      const [from, to] = draft.relation === 'before' ? [timeAtMax, timeAtMin] : [timeAtMin, timeAtMax]
+      return `If ${anchor.label} is ${anchorTime}, this dose will be scheduled between ${from} and ${to}.`
+    }
+    return `If ${anchor.label} is ${anchorTime}, this dose can be taken any time up to ${timeAtMin}.`
+  })
 
   function startAddDose() {
     draft = newDoseDraft()
@@ -223,27 +244,28 @@
       {:else if anchors.length === 0}
         <p class="error-text">No meal/wake/bedtime anchors yet — set those up in Meal &amp; Routine Setup first.</p>
       {:else}
-        <div class="field-row">
-          <div class="field">
-            <label for="dose-minutes">Minutes</label>
-            <input id="dose-minutes" type="number" min="0" bind:value={draft.minMinutes} />
-          </div>
-          <div class="field">
-            <label for="dose-relation">Relation</label>
-            <select id="dose-relation" bind:value={draft.relation}>
-              <option value="before">before</option>
-              <option value="after">after</option>
-            </select>
-          </div>
-        </div>
-        <div class="field">
-          <label for="dose-anchor">Event</label>
-          <select id="dose-anchor" bind:value={draft.anchorId}>
+        <div class="sentence-row">
+          <span>Take this</span>
+          <input class="sentence-input" id="dose-minutes" type="number" min="0" bind:value={draft.minMinutes} aria-label="Minutes" />
+          <span>minutes</span>
+          <select class="sentence-select" id="dose-relation" bind:value={draft.relation} aria-label="Relation">
+            <option value="before">before</option>
+            <option value="after">after</option>
+          </select>
+          <select class="sentence-select" id="dose-anchor" bind:value={draft.anchorId} aria-label="Event">
             {#each anchors as a}
               <option value={a.id}>{a.label}</option>
             {/each}
           </select>
         </div>
+
+        {#if draft.ruleType === 'range'}
+          <div class="sentence-row">
+            <span>up to</span>
+            <input class="sentence-input" id="dose-max-minutes" type="number" min="0" bind:value={draft.maxMinutes} aria-label="Up to minutes" />
+            <span>minutes</span>
+          </div>
+        {/if}
 
         <div class="field">
           <span>How strict?</span>
@@ -254,11 +276,8 @@
           </div>
         </div>
 
-        {#if draft.ruleType === 'range'}
-          <div class="field">
-            <label for="dose-max-minutes">Up to (minutes)</label>
-            <input id="dose-max-minutes" type="number" min="0" bind:value={draft.maxMinutes} />
-          </div>
+        {#if draftPreview}
+          <p class="preview-text">{draftPreview}</p>
         {/if}
       {/if}
 

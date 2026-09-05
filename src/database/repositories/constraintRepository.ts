@@ -56,3 +56,8 @@ export async function listConstraintsByPlan(driver: SqlDriver, planId: string): 
   const rows = await driver.query<ConstraintRow>('SELECT * FROM constraints WHERE plan_id = ? ORDER BY id', [planId])
   return rows.map(rowToConstraint)
 }
+
+/** Removes any constraint referencing this template on either side, so deleting a dose doesn't leave a dangling rule pointing at it. */
+export async function deleteConstraintsForTemplate(driver: SqlDriver, templateId: string): Promise<void> {
+  await driver.execute('DELETE FROM constraints WHERE source_template_id = ? OR target_template_id = ?', [templateId, templateId])
+}

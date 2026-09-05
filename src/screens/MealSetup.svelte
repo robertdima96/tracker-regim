@@ -11,6 +11,7 @@
   import { localTimeToInstant, minutesToLocalTime } from '../scheduler/time'
   import { newId } from '../domain/id'
   import TimeField from '../components/TimeField.svelte'
+  import EventIcon from '../components/EventIcon.svelte'
 
   let {
     driver,
@@ -146,7 +147,7 @@
   {:else}
     <div class="card">
       <div class="row">
-        <span class="event-label"><span class="kind-dot meal"></span>Breakfast</span>
+        <div class="event-row"><EventIcon kind="meal" /><span class="event-label">Breakfast</span></div>
         <input type="checkbox" bind:checked={breakfastEnabled} />
       </div>
       {#if breakfastEnabled}
@@ -159,7 +160,7 @@
 
     <div class="card">
       <div class="row">
-        <span class="event-label"><span class="kind-dot meal"></span>Lunch</span>
+        <div class="event-row"><EventIcon kind="meal" /><span class="event-label">Lunch</span></div>
         <input type="checkbox" bind:checked={lunchEnabled} />
       </div>
       {#if lunchEnabled}
@@ -172,7 +173,7 @@
 
     <div class="card">
       <div class="row">
-        <span class="event-label"><span class="kind-dot meal"></span>Dinner</span>
+        <div class="event-row"><EventIcon kind="meal" /><span class="event-label">Dinner</span></div>
         <input type="checkbox" bind:checked={dinnerEnabled} />
       </div>
       {#if dinnerEnabled}

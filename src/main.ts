@@ -10,7 +10,7 @@ async function bootstrap() {
   if (Capacitor.getPlatform() === 'web') {
     await defineJeepSqlite(window)
     const jeepEl = document.createElement('jeep-sqlite')
-    jeepEl.setAttribute('wasmPath', '/assets')
+    jeepEl.setAttribute('wasmPath', `${import.meta.env.BASE_URL}assets`)
     document.body.appendChild(jeepEl)
     await customElements.whenDefined('jeep-sqlite')
     await getSqliteConnection().initWebStore()

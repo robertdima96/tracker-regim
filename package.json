@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22.5.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -13,10 +16,8 @@
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@tsconfig/svelte": "^5.0.8",
-    "@types/better-sqlite3": "^9.6.0",
     "@types/luxon": "^3.7.5",
     "@types/node": "^24.13.3",
-    "better-sqlite3": "^13.0.3",
     "fast-check": "^4.9.0",
     "svelte": "^5.56.10",
     "svelte-check": "^4.7.6",

@@ -14,6 +14,15 @@ export type Recurrence =
   | { type: 'daily' }
   | { type: 'weekdays'; days: Array<0 | 1 | 2 | 3 | 4 | 5 | 6> } // 0 = Sunday
   | { type: 'interval_fixed'; everyMinutes: number } // fixed clock schedule, ignores actual times
+  /**
+   * "As needed" actual-relative dosing (e.g. "every 6-8h, min 6h apart").
+   * Only one "next due" node is generated per calculateSchedule call, from
+   * the minimum-spacing self-referencing RelativeConstraint on this
+   * template — see scheduler/schedule.ts's same-template pass. Full
+   * multi-instance-per-day generation is out of scope for this
+   * sub-project.
+   */
+  | { type: 'interval_actual_relative'; minGapMinutes: number }
 
 export type EventTemplate = {
   id: string

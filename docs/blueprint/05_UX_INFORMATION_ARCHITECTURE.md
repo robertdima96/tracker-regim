@@ -472,3 +472,97 @@ no screen — it's a single tap that logs the current device time).
 - `[Export backup]` (JSON download)
 - `[Reset app]` (destructive, requires confirmation)
 - `[Report a schedule issue]` — sends the diagnostic package from `08_ENGINEERING_ARCHITECTURE.md` §16, consent-gated
+
+## 22. Mockup prompts (for ChatGPT image generation)
+
+Shared style baseline for every prompt below: mobile app screen, portrait
+orientation, warm paper background (#F6F3EC), near-black warm ink text,
+sage green accent for medication-related elements, ocre/terracotta accent
+for meal-related elements, warm serif font for headings and times, clean
+sans-serif for body text, generous whitespace, rounded card corners, no
+harsh shadows. Calm and reliable, like a well-made scheduling utility —
+not a hospital portal, not a gamified habit-tracker.
+
+**1. Welcome:** Centered layout. Small line-icon mark near the top. Large
+warm-serif headline "Stop doing medication math." One-sentence subtext
+below in sans-serif. One full-width primary button "Get started" in sage
+green with rounded corners. No login fields, no carousel dots, no logos
+other than the app's own mark.
+
+**2. Create Treatment Plan:** A simple form on the paper background: a
+labeled text field "Plan name", two date fields ("Start date", "End date
+(optional)"), a text area "Notes (optional)". Primary button "Save" at the
+bottom, full width, sage green.
+
+**3. Medication list:** A vertical list of rounded cards, each showing a
+medication name in serif, a small pill/capsule icon, a one-line rule
+summary in muted gray sans-serif ("60 min before breakfast"), and a chevron
+to edit. A floating circular "+" button bottom-right in sage green. If
+empty, show a centered empty-state illustration-free message instead of
+the list.
+
+**4. Add/Edit Medication:** Form with fields "Display name", "Strength"
+(two inline fields: number + unit dropdown), "Form", "Notes". Below that,
+a row of five pill-shaped selectable chips labeled "Doctor", "Pharmacist",
+"Package", "My routine", "Other" under the heading "Where does this
+instruction come from?". Below that, a card list titled "Doses" with an
+"+ Add dose" link.
+
+**5. Rule Builder:** A sentence-construction UI: a horizontal row of
+inline dropdown/number chips reading like a sentence — "[60] [minutes]
+[before] [breakfast]" — each bracketed part a distinct rounded selectable
+chip. Below it, a muted preview line in italics: "If breakfast is 09:00,
+this dose will be scheduled at 08:00." Primary button "Save rule" at the
+bottom.
+
+**6. Meal & Routine Setup:** Three rounded cards labeled "Breakfast",
+"Lunch", "Dinner", each with a toggle switch and a time range shown in
+terracotta accent color. Below them, two fields "Wake time" and "Bedtime"
+with clock-style time pickers. A text link "+ Add custom meal or event"
+beneath. Primary button "Continue" at the bottom.
+
+**7. Plan Review:** A read-only vertical timeline grouped under
+"MORNING" / "MIDDAY" / "EVENING" headers, each row showing a time (or time
+range) in serif and a label in sans-serif, medication rows marked with the
+sage dot, meal rows marked with the terracotta dot. A muted note: "Times
+will adapt when linked events change." Primary button "Activate treatment"
+at the bottom.
+
+**8. Today:** The main screen. A "NOW" marker on a vertical timeline down
+the left side with sage/terracotta dots per event. At the top, one large
+elevated card — the next action — showing an event label in serif, a bold
+time or time window, a one-line rule summary, and a primary button
+("Taken now"). Below that, a smaller secondary line ("Breakfast from
+09:17"). Beneath the timeline, three small text-link shortcuts: "When can
+I eat?", "View plan", "Report schedule issue".
+
+**9. Event Detail:** A single event shown large at the top (label, time
+window, status badge). Below it, a "Why?" section with 2-3 bulleted plain-
+language facts explaining the calculated time. Below that, a row of action
+buttons: "Taken now", "Taken at…", "Snooze", "Skip".
+
+**10. Log Administration:** A large time display at the top defaulting to
+the current time. Below it, three quick-offset chip buttons: "5 min ago",
+"15 min ago", "30 min ago". Below that, a manual time-picker wheel. A text
+field "Note (optional)" beneath. Primary button "Confirm" at the bottom.
+
+**11. Conflict Detail:** A card with a warning-toned (muted amber, not
+alarming red) header icon and the title "Schedule conflict". Below it,
+2-3 plain-language sentences describing which configured rules can't all
+be satisfied. Below that, a list of review actions as outlined buttons:
+"Review dinner time", "Review medication timing", "Review bedtime", and a
+plain text link "Dismiss for now".
+
+**12. History:** A vertical list grouped by day, each day showing a
+compact sequence of small rows: a planned time (struck through gray if
+changed), an actual time in ink black, and a small delta label like "+17
+min" in muted terracotta. A segmented control at the top to switch between
+"Actual timeline" / "Final schedule" / "Original schedule" views.
+
+**13. Settings / Notification Health:** A list of grouped settings rows.
+Top group "Notifications": a status row with a green dot "Reminders are
+ready." and sub-rows for permission status, exact-alarm capability, next
+reminder time. Middle group "Privacy": a segmented control "Full / Private
+/ Hidden" for lock-screen notification content. Bottom group "Data":
+"Export backup", "Report a schedule issue", and a destructive-styled
+"Reset app" row in muted red text.

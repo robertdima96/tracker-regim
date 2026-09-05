@@ -74,12 +74,13 @@ notes?
 confirmedAt
 ```
 
-`sourceType`:
+`sourceType` (must match `RelativeConstraint.source` in
+`06_SCHEDULING_ENGINE_SPEC.md`, and the instruction-source picker in
+`04_PRD_MVP.md` §5.2 / `05_UX_INFORMATION_ARCHITECTURE.md` §7):
 - clinician;
 - pharmacist;
 - package;
-- reference;
-- user;
+- user_routine;
 - other.
 
 ### EventTemplate
@@ -96,8 +97,8 @@ activeFrom
 activeUntil?
 ```
 
-Kinds:
-- medication_dose;
+Kinds (must match `ScheduleEvent.kind` in `06_SCHEDULING_ENGINE_SPEC.md`):
+- medication;
 - meal;
 - wake;
 - sleep;
@@ -247,18 +248,107 @@ CREATE TABLE event_templates (
 CREATE TABLE constraints (
   id TEXT PRIMARY KEY,
   plan_id TEXT NOT NULL,
-  source_template_id TEXT,
-  target_template_id TEXT,
-  type TEXT NOT NULL,
+  source_template_id TEXT NOT NULL,
+  target_template_id TEXT NOT NULL,
+  relation TEXT NOT NULL,              -- 'before' | 'after'
   min_offset_minutes INTEGER,
   max_offset_minutes INTEGER,
   fixed_local_time TEXT,
-  hardness TEXT NOT NULL,
-  source_type TEXT NOT NULL,
+  hardness TEXT NOT NULL,              -- 'hard' | 'preference'
+  source_type TEXT NOT NULL,           -- 'clinician' | 'pharmacist' | 'package' | 'user_routine' | 'other'
   note TEXT,
-  FOREIGN KEY(plan_id) REFERENCES treatment_plans(id)
+  created_at TEXT NOT NULL,
+  FOREIGN KEY(plan_id) REFERENCES treatment_plans(id),
+  FOREIGN KEY(source_template_id) REFERENCES event_templates(id),
+  FOREIGN KEY(target_template_id) REFERENCES event_templates(id)
 );
 ```
+
+`source_template_id` and `target_template_id` may be equal. This is how
+"minimum X hours between administrations" (rule primitive #9 in
+`04_PRD_MVP.md` §5.3) is modeled: a self-referencing constraint where both
+sides point at the same medication-dose template, `relation = 'after'`, and
+`min_offset_minutes` is the required spacing. This is also the SQL form of
+the "previous same-medication administration" anchor described in
+`06_SCHEDULING_ENGINE_SPEC.md` §8. Fixed-schedule recurrence ("every X
+hours" regardless of actual dose time, rule primitive #8) is instead
+encoded in `event_templates.recurrence_json` — the two rule primitives are
+deliberately different mechanisms; see §12 of `06_SCHEDULING_ENGINE_SPEC.md`.
+
+```sql
+CREATE TABLE user_profiles (
+  id TEXT PRIMARY KEY,
+  locale TEXT NOT NULL,
+  timezone TEXT NOT NULL,
+  week_start TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE instruction_sets (
+  id TEXT PRIMARY KEY,
+  medication_id TEXT NOT NULL,
+  source_type TEXT NOT NULL,           -- 'clinician' | 'pharmacist' | 'package' | 'user_routine' | 'other'
+  source_label TEXT,
+  notes TEXT,
+  confirmed_at TEXT NOT NULL,
+  FOREIGN KEY(medication_id) REFERENCES medications(id)
+);
+
+CREATE TABLE schedule_revisions (
+  id TEXT PRIMARY KEY,
+  plan_id TEXT NOT NULL,
+  local_date TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  reason TEXT NOT NULL,                -- 'plan_activated' | 'event_logged' | 'actual_time_edited' | 'meal_moved' | 'plan_changed' | 'timezone_changed'
+  trigger_event_id TEXT,
+  engine_version TEXT NOT NULL,
+  FOREIGN KEY(plan_id) REFERENCES treatment_plans(id)
+);
+
+CREATE TABLE daily_events (
+  id TEXT PRIMARY KEY,
+  template_id TEXT NOT NULL,
+  local_date TEXT NOT NULL,
+  planned_earliest TEXT NOT NULL,
+  planned_latest TEXT NOT NULL,
+  current_earliest TEXT NOT NULL,
+  current_latest TEXT NOT NULL,
+  status TEXT NOT NULL,                -- 'upcoming' | 'taken' | 'skipped' | 'cancelled'
+  revision_id TEXT NOT NULL,
+  FOREIGN KEY(template_id) REFERENCES event_templates(id),
+  FOREIGN KEY(revision_id) REFERENCES schedule_revisions(id)
+);
+
+CREATE TABLE administration_records (
+  id TEXT PRIMARY KEY,
+  daily_event_id TEXT NOT NULL,
+  action TEXT NOT NULL,                -- 'taken' | 'skipped' | 'corrected' | 'undone'
+  actual_at TEXT,
+  recorded_at TEXT NOT NULL,
+  source TEXT NOT NULL,
+  note TEXT,
+  FOREIGN KEY(daily_event_id) REFERENCES daily_events(id)
+);
+
+CREATE TABLE notification_records (
+  id TEXT PRIMARY KEY,
+  daily_event_id TEXT NOT NULL,
+  platform_notification_id TEXT NOT NULL,
+  scheduled_at TEXT NOT NULL,
+  fire_at TEXT NOT NULL,
+  state TEXT NOT NULL,                 -- 'pending' | 'delivered' | 'cancelled' | 'failed'
+  schedule_revision_id TEXT NOT NULL,
+  FOREIGN KEY(daily_event_id) REFERENCES daily_events(id),
+  FOREIGN KEY(schedule_revision_id) REFERENCES schedule_revisions(id)
+);
+```
+
+The `reason`, `action`, and `state` enum values above are copied verbatim
+from `ScheduleRevision.reason` (06 §13), `AdministrationRecord.action` (§2
+of this file), and `09_NOTIFICATIONS_AND_BACKGROUND.md`'s notification
+lifecycle respectively. `daily_events.status` is copied from
+`ScheduleEvent.status` in `06_SCHEDULING_ENGINE_SPEC.md` §4 — **not** from
+§7 of this file, which currently disagrees (see below).
 
 ## 6. Recurrence model
 
@@ -283,15 +373,20 @@ For MVP, recurrence can use a compact JSON format while domain objects remain ty
 
 ## 7. Event status
 
-Recommended:
-- scheduled;
-- available;
-- late;
+Persisted (`daily_events.status`, matching `ScheduleEvent.status` in
+`06_SCHEDULING_ENGINE_SPEC.md` §4):
+- upcoming;
 - taken;
 - skipped;
 - cancelled.
 
-“Late” may be derived rather than persisted.
+UI-derived, never persisted (computed from `upcoming` + the event's current
+window + the current time — see `05_UX_INFORMATION_ARCHITECTURE.md` §4 for
+the fuller UI state list this feeds into):
+- available now;
+- due soon;
+- due;
+- late.
 
 ## 8. Planned vs current vs actual
 

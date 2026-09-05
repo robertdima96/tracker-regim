@@ -5,12 +5,9 @@ import { listEventTemplatesActiveOn } from '../database/repositories/eventTempla
 import { listConstraintsByPlan } from '../database/repositories/constraintRepository'
 import { getEffectiveActualEvents, getSkippedTemplateIds, recordAdministration, type AdministrationAction } from '../database/repositories/administrationRepository'
 import { saveScheduleRevision, upsertDailyEvent, getDailyEventsForDate } from '../database/repositories/scheduleRepository'
+import { newId } from '../domain/id'
 
 const ENGINE_VERSION = 'v0'
-
-function newId(): string {
-  return crypto.randomUUID()
-}
 
 /**
  * Recomputes today's schedule from persisted templates/constraints/actual

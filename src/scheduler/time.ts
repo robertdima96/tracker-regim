@@ -29,3 +29,7 @@ export function compareInstants(a: Instant, b: Instant): number {
   if (a > b) return 1
   return 0
 }
+
+export function todayLocalDate(timezone: string): LocalDate {
+  return DateTime.now().setZone(timezone).toFormat('yyyy-MM-dd')
+}

@@ -392,3 +392,83 @@ Prototype and test:
 
 Success criterion:
 Users should understand the schedule without explanation from the researcher.
+
+## 21. Screen-by-screen reference
+
+Maps the 13 MVP screens (`04_PRD_MVP.md` §10) to where they're specified.
+
+### Already specified elsewhere in this document
+- **Today** — see §3 (hierarchy), §4 (event states), §9 (recalculation UX), §10 (When can I eat)
+- **Rule Builder** — see §5 (sentence construction), §6 (progressive disclosure)
+- **Plan Review** — see §8
+- **Conflict Detail** — see §15
+- **History** — see §14
+
+### Welcome / value proposition
+Single screen, no login, no account fields (accountless MVP per
+`04_PRD_MVP.md` §2). Centered layout:
+- headline: "Stop doing medication math." (positioning line from `00_README.md`)
+- one-line subtext: the working product statement from `00_README.md`
+- single primary action: `[Get started]` → Create Treatment Plan
+- no secondary screens/onboarding carousel in MVP — the value prop is proven by using the product, not by reading about it
+
+### Create Treatment Plan
+Form fields, all from `04_PRD_MVP.md` §5.1:
+- name (required)
+- start date (required, defaults to today)
+- end date (optional)
+- timezone mode (defaults to device timezone)
+- notes (optional)
+
+Status defaults to `draft` on save — there is no activation control here;
+activation happens at Plan Review (§8) once medications and meals exist.
+Primary action: `[Save]` → Medication list (empty state, see §16 "No plan").
+
+### Medication list
+Scoped to the current plan.
+- Empty state: reuse §16 "No plan" copy ("Add your treatment instructions and DoseFlow will build today's schedule.")
+- Each row: display name, strength (if set), rule summary line (e.g. "60 min before breakfast"), tap to edit
+- `[Add medication]` → Add/Edit Medication
+- Once at least one medication exists: `[Continue to meals & routine]` → Meal & Routine Setup
+
+### Add/Edit Medication
+Fields from `04_PRD_MVP.md` §5.2: display name (required), strength value +
+unit (optional), form (optional), notes (optional). Instruction source
+picker per §7 of this document (Doctor/clinician, Pharmacist, Package/
+reference, My own routine, Other — stored as `instruction_sets.source_type`,
+see `07_DATA_MODEL.md`).
+
+A medication can have multiple dose templates (one `EventTemplate` per
+dose, per `07_DATA_MODEL.md` §3 — e.g. morning dose and evening dose with
+different rules). This screen lists each dose under the medication with an
+`[Add dose]` action; each dose opens the Rule Builder (§5) to define its
+timing rule. `[Save]` returns to Medication list.
+
+### Meal & Routine Setup
+- Built-in meals (breakfast, lunch, dinner, per `04_PRD_MVP.md` §5.4): toggle on/off, set preferred time or window, mark fixed vs. flexible
+- Wake time / bedtime fields — these are the anchors used by "X after wake-up" / "X before bedtime" rules (`06_SCHEDULING_ENGINE_SPEC.md` §8)
+- `[Add custom meal/event]` for snacks or named events
+- `[Continue]` → Plan Review (§8)
+
+### Event Detail
+Opened by tapping any event on Today or in History.
+- event label, current window/time, status (§4 event states)
+- explanation: render the `Explanation.facts` array (`06_SCHEDULING_ENGINE_SPEC.md` §20) as a bulleted "why" list, following the error/explanation philosophy in §17 of this document
+- instruction source (§7 of this document)
+- actions matching current state: Taken now / Taken at… / Snooze / Skip / Undo (`04_PRD_MVP.md` §5.6)
+
+### Log Administration
+Reached from Event Detail's `[Taken at…]` (not `[Taken now]`, which requires
+no screen — it's a single tap that logs the current device time).
+- time picker defaulting to now
+- quick offsets: "5 min ago", "15 min ago", "30 min ago"
+- free time entry for anything else
+- optional note
+- `[Confirm]` triggers recalculation (`06_SCHEDULING_ENGINE_SPEC.md` §10) and returns to Today showing the "N upcoming events adjusted" summary (§9 of this document)
+
+### Settings / Notification Health
+- Notification health block (`08_ENGINEERING_ARCHITECTURE.md` §17): permission status, exact-alarm capability (Android), scheduled notification count, next reminder, last error. Rendered as "Reminders are ready." or "Precise reminders are not currently permitted on this device." per that section.
+- Lock-screen privacy mode: Full / Private / Hidden (`10_SAFETY_PRIVACY_COMPLIANCE.md` §17)
+- `[Export backup]` (JSON download)
+- `[Reset app]` (destructive, requires confirmation)
+- `[Report a schedule issue]` — sends the diagnostic package from `08_ENGINEERING_ARCHITECTURE.md` §16, consent-gated

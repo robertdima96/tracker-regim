@@ -24,12 +24,14 @@ Notification Planner
   ↓
 Desired Notification Set
   ↓
-Platform Adapter
-  ├─ iOS
-  └─ Android
+@capacitor/local-notifications
+  ├─ iOS (UNUserNotificationCenter under the hood)
+  └─ Android (AlarmManager under the hood)
 ```
 
-The scheduler does not call OS APIs.
+The scheduler does not call OS APIs. The Notification Planner is the only
+module that imports `@capacitor/local-notifications` (see
+`08_ENGINEERING_ARCHITECTURE.md` §3, `/src/notifications`).
 
 ## 3. Desired notification record
 
@@ -70,26 +72,38 @@ Core considerations:
 
 ### Critical Alerts
 
-Apple offers Critical Alerts that can bypass mute/Focus, but apps require the relevant entitlement and approval.
-
-Do not assume approval.
+Apple offers Critical Alerts that can bypass mute/Focus, but apps require
+the relevant entitlement and approval. `@capacitor/local-notifications`
+does not expose Critical Alerts — using them would require writing a
+custom native iOS plugin. Not planned for Phase A.
 
 MVP:
-- standard notifications;
+- standard notifications via `@capacitor/local-notifications`;
 - optional Time Sensitive notification behavior if platform policy/use case supports it and is reviewed.
 
 ## 6. Android
 
 Precise timing is more complex.
 
-Modern Android restricts exact alarms. Apps targeting recent Android versions may need special exact-alarm access for APIs such as `setExact()` / `setExactAndAllowWhileIdle()` depending on the chosen permission model and use case.
+Modern Android restricts exact alarms. Apps targeting recent Android
+versions may need special exact-alarm access for APIs such as
+`setExact()` / `setExactAndAllowWhileIdle()` depending on the chosen
+permission model and use case.
+
+**Known plugin gap:** `@capacitor/local-notifications` schedules
+notifications but does not manage the Android 12+ `SCHEDULE_EXACT_ALARM`
+permission grant/check itself. Detecting and requesting this permission
+requires a small custom native Android plugin (a short Kotlin shim calling
+`AlarmManager.canScheduleExactAlarms()`), not pure JS/TypeScript. Size this
+as its own engineering task, not an afterthought inside the notification
+planner.
 
 Engineering tasks:
-- determine whether product qualifies for exact-alarm policy;
-- implement capability detection;
+- build the native exact-alarm-permission shim described above;
+- implement capability detection using it;
 - guide user to settings only when justified;
 - test Doze/battery modes;
-- reboot receiver;
+- reconcile pending notifications on every app launch (see §12 — Capacitor apps get no automatic reboot receiver);
 - reschedule after permission changes.
 
 ## 7. Precision tiers
@@ -156,12 +170,23 @@ Do not assume the medication was taken at snooze time.
 
 ## 12. Reboot
 
-Android:
-- device reboot can remove scheduled alarms depending on mechanism;
-- rehydrate desired reminders after boot using native receiver/process.
+Capacitor apps do not get an automatic `BOOT_COMPLETED` broadcast receiver
+the way a native Android app can register one — `@capacitor/local-
+notifications` does not add this for you. Rather than building a custom
+native receiver for Phase A, rely on the same reconciliation this spec
+already needs after any recalculation (§4 Diff algorithm):
+
+- on every app launch/resume, read the desired notification set from the
+  database and compare it against what the plugin reports as currently
+  scheduled (`LocalNotifications.getPending()`);
+- reschedule anything missing.
+
+This has a known gap: a device that reboots and is not reopened before a
+reminder's fire time will miss that reminder. Acceptable for Phase A;
+revisit with a native receiver if dogfooding shows this happening often.
 
 iOS:
-- verify pending local-notification behavior and resync at launch.
+- verify pending local-notification behavior and resync at launch using the same `getPending()`-based reconciliation.
 
 ## 13. Timezone changes
 
@@ -198,6 +223,9 @@ Precise alarms      Enabled / Not available / Needs permission
 Battery restriction Normal / Restricted
 Next reminder       08:47
 ```
+
+Read via `LocalNotifications.checkPermissions()` (notification permission)
+and the native exact-alarm shim from §6 (Android precise-alarm capability).
 
 Exact Android fields depend on implementation/API.
 

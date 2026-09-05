@@ -101,7 +101,7 @@ type RelativeConstraint = {
   minOffsetMinutes: number
   maxOffsetMinutes?: number
   hardness: 'hard' | 'preference'
-  source: 'doctor' | 'pharmacist' | 'reference' | 'user'
+  source: 'clinician' | 'pharmacist' | 'package' | 'user_routine' | 'other'
 }
 ```
 
@@ -147,6 +147,11 @@ Supported MVP anchors:
 Later:
 - another medication;
 - arbitrary custom event.
+
+`previous same-medication administration` is implemented as a
+self-referencing `RelativeConstraint` (`sourceTemplateId === targetTemplateId`).
+See `07_DATA_MODEL.md` §5 for the SQL-level note on how this also expresses
+"minimum X hours between administrations" from `04_PRD_MVP.md` §5.3.
 
 ## 9. Forward scheduling
 

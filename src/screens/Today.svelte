@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte'
   import type { SqlDriver } from '../database/driver'
-  import type { TreatmentPlan, Conflict } from '../domain/types'
+  import type { TreatmentPlan, Conflict, Explanation } from '../domain/types'
   import { getDailyEventsForDate, type DisplayableEvent } from '../database/repositories/scheduleRepository'
   import { recalculateAndPersist, logAdministration } from '../app/scheduleService'
-  import { localTimeToInstant, minutesToLocalTime, todayLocalDate } from '../scheduler/time'
+  import { renderExplanationFact } from '../app/explainEvent'
+  import { localTimeToInstant, minutesToLocalTime, addMinutes, todayLocalDate } from '../scheduler/time'
   import EventIcon from '../components/EventIcon.svelte'
   import TimeField from '../components/TimeField.svelte'
 
@@ -16,6 +17,8 @@
   const date = untrack(() => todayLocalDate(plan.timezone))
   let events = $state<DisplayableEvent[]>([])
   let conflicts = $state<Conflict[]>([])
+  let explanations = $state<Record<string, Explanation>>({})
+  let expandedWhy = $state<Record<string, boolean>>({})
   let loading = $state(true)
   let busyEventId = $state<string | undefined>(undefined)
   let loggingAtEventId = $state<string | undefined>(undefined)
@@ -31,10 +34,37 @@
     const hadScheduleAlready = (await getDailyEventsForDate(driver, plan.id, date)).length > 0
     const result = await recalculateAndPersist(driver, plan, date, hadScheduleAlready ? 'plan_changed' : 'plan_activated')
     conflicts = result.conflicts
+    explanations = Object.fromEntries(result.explanations.map((e) => [e.eventId, e]))
     events = await getDailyEventsForDate(driver, plan.id, date)
     loading = false
   }
   onMount(load)
+
+  function toggleWhy(eventId: string) {
+    expandedWhy = { ...expandedWhy, [eventId]: !expandedWhy[eventId] }
+  }
+
+  // Only medication events had loggable actions until now — meals/wake/
+  // sleep were display-only, which meant "actually ate breakfast late"
+  // could never happen and the reverse-scheduling behavior it triggers
+  // (later meds pushed later) was unreachable from the UI. Every kind is
+  // loggable via the same generic action() call; only the button wording
+  // changes, and "Skip" is omitted for wake/sleep since skipping waking
+  // up isn't a meaningful action.
+  function actionLabels(kind: DisplayableEvent['kind']): { now: string; at: string; skip?: string } {
+    switch (kind) {
+      case 'medication':
+        return { now: 'Taken now', at: 'Taken at…', skip: 'Skip' }
+      case 'meal':
+        return { now: 'Ate now', at: 'Ate at…', skip: 'Skip' }
+      case 'wake':
+        return { now: "I'm up", at: 'Woke at…' }
+      case 'sleep':
+        return { now: 'Going to bed', at: 'Went to bed at…' }
+      default:
+        return { now: 'Log now', at: 'Log at…', skip: 'Skip' }
+    }
+  }
 
   function formatWindow(w: { earliest: string; latest: string }): string {
     const from = minutesToLocalTime(w.earliest, plan.timezone)
@@ -46,11 +76,21 @@
     return minutesToLocalTime(new Date().toISOString(), plan.timezone)
   }
 
-  async function act(event: DisplayableEvent, action: 'taken' | 'skipped', actualAt?: string) {
+  async function act(event: DisplayableEvent, action: 'taken' | 'skipped' | 'undone', actualAt?: string) {
     busyEventId = event.id
     try {
-      const result = await logAdministration(driver, plan, date, event.templateId, action, actualAt, 'user')
+      // "Taken now" (the one-tap path, as opposed to "Taken at…") calls
+      // act() with no actualAt at all — it must default to the current
+      // instant here, since recordAdministration stores exactly what it's
+      // given and getEffectiveActualEvents filters out rows with no
+      // actual_at. Without this, a plain "taken" tap silently never
+      // registers as an actual event: the status never flips and nothing
+      // downstream (window collapse, explanations, later constraints)
+      // ever sees it.
+      const resolvedActualAt = action === 'taken' ? (actualAt ?? new Date().toISOString()) : actualAt
+      const result = await logAdministration(driver, plan, date, event.templateId, action, resolvedActualAt, 'user')
       conflicts = result.conflicts
+      explanations = Object.fromEntries(result.explanations.map((e) => [e.eventId, e]))
       events = await getDailyEventsForDate(driver, plan.id, date)
     } finally {
       busyEventId = undefined
@@ -61,6 +101,10 @@
   function startLogAt(event: DisplayableEvent) {
     loggingAtEventId = event.id
     loggingAtTime = nowLocalTime()
+  }
+
+  function setLoggingAtMinutesAgo(minutesAgo: number) {
+    loggingAtTime = minutesToLocalTime(addMinutes(new Date().toISOString(), -minutesAgo), plan.timezone)
   }
 
   function confirmLogAt(event: DisplayableEvent) {
@@ -84,6 +128,21 @@
     </div>
     <button class="back-btn" onclick={onOpenPlan} aria-label="Edit your plan" title="Edit your plan">✎</button>
   </div>
+
+  {#snippet whyBlock(eventId: string)}
+    {#if explanations[eventId]}
+      <button type="button" class="chip" onclick={() => toggleWhy(eventId)}>
+        {expandedWhy[eventId] ? 'Hide why' : 'Why this time?'}
+      </button>
+      {#if expandedWhy[eventId]}
+        <ul class="why-list">
+          {#each explanations[eventId].facts as fact}
+            <li>{renderExplanationFact(fact, plan.timezone)}</li>
+          {/each}
+        </ul>
+      {/if}
+    {/if}
+  {/snippet}
 
   {#if loading}
     <p class="muted">Loading…</p>
@@ -113,7 +172,10 @@
         {#if loggingAtEventId === nextAction.id}
           <div class="card" style="background: var(--paper); box-shadow: none;">
             <div class="chip-row">
-              <button type="button" class="chip" onclick={() => (loggingAtTime = minutesToLocalTime(localTimeToInstant(date, nowLocalTime(), plan.timezone), plan.timezone))}>Now</button>
+              <button type="button" class="chip" onclick={() => (loggingAtTime = nowLocalTime())}>Now</button>
+              <button type="button" class="chip" onclick={() => setLoggingAtMinutesAgo(5)}>5 min ago</button>
+              <button type="button" class="chip" onclick={() => setLoggingAtMinutesAgo(15)}>15 min ago</button>
+              <button type="button" class="chip" onclick={() => setLoggingAtMinutesAgo(30)}>30 min ago</button>
             </div>
             <TimeField id="log-at-time" label="Taken at" bind:value={loggingAtTime} />
             <div class="field-row">
@@ -128,6 +190,7 @@
           </div>
           <button class="btn btn-danger" disabled={busyEventId === nextAction.id} onclick={() => act(nextAction, 'skipped')}>Skip</button>
         {/if}
+        {@render whyBlock(nextAction.id)}
       </div>
     {/if}
 
@@ -142,24 +205,40 @@
             <span class="badge {event.kind === 'medication' ? 'badge-sage' : 'badge-terracotta'}">{formatWindow(event.currentWindow)}</span>
           </div>
           {#if event.status === 'taken'}
-            <span class="muted">Taken at {event.actualAt ? minutesToLocalTime(event.actualAt, plan.timezone) : ''}</span>
+            <div class="row">
+              <span class="muted">Taken at {event.actualAt ? minutesToLocalTime(event.actualAt, plan.timezone) : ''}</span>
+              <button type="button" class="chip" disabled={busyEventId === event.id} onclick={() => act(event, 'undone')}>Undo</button>
+            </div>
           {:else if event.status === 'skipped'}
-            <span class="muted">Skipped</span>
-          {:else if event.kind === 'medication'}
+            <div class="row">
+              <span class="muted">Skipped</span>
+              <button type="button" class="chip" disabled={busyEventId === event.id} onclick={() => act(event, 'undone')}>Undo</button>
+            </div>
+          {:else}
+            {@const labels = actionLabels(event.kind)}
             {#if loggingAtEventId === event.id}
-              <TimeField id="log-at-time-{event.id}" label="Taken at" bind:value={loggingAtTime} />
+              <div class="chip-row">
+                <button type="button" class="chip" onclick={() => (loggingAtTime = nowLocalTime())}>Now</button>
+                <button type="button" class="chip" onclick={() => setLoggingAtMinutesAgo(5)}>5 min ago</button>
+                <button type="button" class="chip" onclick={() => setLoggingAtMinutesAgo(15)}>15 min ago</button>
+                <button type="button" class="chip" onclick={() => setLoggingAtMinutesAgo(30)}>30 min ago</button>
+              </div>
+              <TimeField id="log-at-time-{event.id}" label={labels.at.slice(0, -1)} bind:value={loggingAtTime} />
               <div class="field-row">
                 <button class="btn btn-secondary" onclick={() => (loggingAtEventId = undefined)}>Cancel</button>
                 <button class="btn btn-primary" disabled={busyEventId === event.id} onclick={() => confirmLogAt(event)}>Confirm</button>
               </div>
             {:else}
               <div class="field-row">
-                <button class="btn btn-primary" disabled={busyEventId === event.id} onclick={() => act(event, 'taken')}>Taken now</button>
-                <button class="btn btn-secondary" disabled={busyEventId === event.id} onclick={() => startLogAt(event)}>Taken at…</button>
-                <button class="btn btn-danger" disabled={busyEventId === event.id} onclick={() => act(event, 'skipped')}>Skip</button>
+                <button class="btn btn-primary" disabled={busyEventId === event.id} onclick={() => act(event, 'taken')}>{labels.now}</button>
+                <button class="btn btn-secondary" disabled={busyEventId === event.id} onclick={() => startLogAt(event)}>{labels.at}</button>
+                {#if labels.skip}
+                  <button class="btn btn-danger" disabled={busyEventId === event.id} onclick={() => act(event, 'skipped')}>{labels.skip}</button>
+                {/if}
               </div>
             {/if}
           {/if}
+          {@render whyBlock(event.id)}
         </div>
       {/each}
     </div>

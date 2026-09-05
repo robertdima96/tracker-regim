@@ -512,6 +512,17 @@ body {
 .chip:hover {
   border-color: var(--sage);
 }
+.why-list {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.why-list li {
+  margin-bottom: 4px;
+}
+
 .chip.selected {
   background: var(--sage);
   border-color: var(--sage);

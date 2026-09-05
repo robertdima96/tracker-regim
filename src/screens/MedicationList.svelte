@@ -6,7 +6,21 @@
   import { listConstraintsByPlan, type StoredConstraint } from '../database/repositories/constraintRepository'
   import AddMedicationForm from './AddMedicationForm.svelte'
 
-  let { driver, plan, onDone, onBack }: { driver: SqlDriver; plan: TreatmentPlan; onDone: () => void; onBack: () => void } = $props()
+  let {
+    driver,
+    plan,
+    onDone,
+    onBack,
+    continueLabel = 'Continue to plan review',
+    requireAtLeastOne = true,
+  }: {
+    driver: SqlDriver
+    plan: TreatmentPlan
+    onDone: () => void
+    onBack: () => void
+    continueLabel?: string
+    requireAtLeastOne?: boolean
+  } = $props()
 
   let templates = $state<StoredEventTemplate[]>([])
   let constraints = $state<StoredConstraint[]>([])
@@ -88,7 +102,7 @@
     <button class="btn btn-secondary" onclick={() => (showAddForm = true)}>+ Add medication</button>
   {/if}
 
-  {#if medications.length > 0 && !showAddForm}
-    <button class="btn btn-primary" onclick={onDone}>Continue to plan review</button>
+  {#if (medications.length > 0 || !requireAtLeastOne) && !showAddForm}
+    <button class="btn btn-primary" onclick={onDone}>{continueLabel}</button>
   {/if}
 </div>

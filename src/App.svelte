@@ -2,12 +2,14 @@
   import { onMount } from 'svelte'
   import { createCapacitorSqliteDriver } from './database/drivers/capacitorSqliteDriver'
   import { getWizardState, type WizardState } from './app/planService'
+  import type { TreatmentPlan } from './domain/types'
   import Welcome from './screens/Welcome.svelte'
   import CreatePlan from './screens/CreatePlan.svelte'
   import MealSetup from './screens/MealSetup.svelte'
   import MedicationList from './screens/MedicationList.svelte'
   import PlanReview from './screens/PlanReview.svelte'
   import Today from './screens/Today.svelte'
+  import PlanHub from './screens/PlanHub.svelte'
 
   const driver = createCapacitorSqliteDriver()
 
@@ -16,7 +18,13 @@
   // user can go back to an earlier step without the data-derived state
   // machine immediately bouncing them forward again because the data for
   // later steps already exists.
-  type Screen = WizardState | { screen: 'createPlan' } | { screen: 'loading' }
+  type Screen =
+    | WizardState
+    | { screen: 'createPlan' }
+    | { screen: 'loading' }
+    | { screen: 'planHub'; plan: TreatmentPlan }
+    | { screen: 'editMealSetup'; plan: TreatmentPlan }
+    | { screen: 'editMedications'; plan: TreatmentPlan }
   let state = $state<Screen>({ screen: 'loading' })
 
   onMount(async () => {
@@ -54,5 +62,27 @@
     onBack={() => goTo({ screen: 'medicationList', plan })}
   />
 {:else if state.screen === 'today'}
-  <Today {driver} plan={state.plan} />
+  {@const plan = state.plan}
+  <Today {driver} {plan} onOpenPlan={() => goTo({ screen: 'planHub', plan })} />
+{:else if state.screen === 'planHub'}
+  {@const plan = state.plan}
+  <PlanHub
+    {plan}
+    onEditMeals={() => goTo({ screen: 'editMealSetup', plan })}
+    onEditMedications={() => goTo({ screen: 'editMedications', plan })}
+    onBack={() => goTo({ screen: 'today', plan })}
+  />
+{:else if state.screen === 'editMealSetup'}
+  {@const plan = state.plan}
+  <MealSetup {driver} {plan} onDone={() => goTo({ screen: 'planHub', plan })} onBack={() => goTo({ screen: 'planHub', plan })} continueLabel="Done" />
+{:else if state.screen === 'editMedications'}
+  {@const plan = state.plan}
+  <MedicationList
+    {driver}
+    {plan}
+    onDone={() => goTo({ screen: 'planHub', plan })}
+    onBack={() => goTo({ screen: 'planHub', plan })}
+    continueLabel="Done"
+    requireAtLeastOne={false}
+  />
 {/if}

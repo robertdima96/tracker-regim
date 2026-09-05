@@ -6,7 +6,7 @@
   import { recalculateAndPersist, logAdministration } from '../app/scheduleService'
   import { minutesToLocalTime, todayLocalDate } from '../scheduler/time'
 
-  let { driver, plan }: { driver: SqlDriver; plan: TreatmentPlan } = $props()
+  let { driver, plan, onOpenPlan }: { driver: SqlDriver; plan: TreatmentPlan; onOpenPlan: () => void } = $props()
 
   // `plan` is fixed for this screen's lifetime (App.svelte only mounts
   // Today once a plan is active) — capturing today's date once
@@ -18,13 +18,16 @@
   let busyEventId = $state<string | undefined>(undefined)
 
   async function load() {
-    let loaded = await getDailyEventsForDate(driver, plan.id, date)
-    if (loaded.length === 0) {
-      const result = await recalculateAndPersist(driver, plan, date, 'plan_activated')
-      conflicts = result.conflicts
-      loaded = await getDailyEventsForDate(driver, plan.id, date)
-    }
-    events = loaded
+    // Always recalculate on load, not just when today has no schedule
+    // yet: the plan may have just been edited (meals/medications changed
+    // via the Plan hub), and that must be reflected the moment Today is
+    // reopened, not only after the next dose-logging action triggers a
+    // recalculation. calculateSchedule is idempotent, so this is a no-op
+    // in the common case where nothing changed.
+    const hadScheduleAlready = (await getDailyEventsForDate(driver, plan.id, date)).length > 0
+    const result = await recalculateAndPersist(driver, plan, date, hadScheduleAlready ? 'plan_changed' : 'plan_activated')
+    conflicts = result.conflicts
+    events = await getDailyEventsForDate(driver, plan.id, date)
     loading = false
   }
   onMount(load)
@@ -51,8 +54,13 @@
 </script>
 
 <div class="screen">
-  <h1>Today</h1>
-  <p class="screen-subtitle">{plan.name}</p>
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+    <div style="min-width: 0;">
+      <h1>Today</h1>
+      <p class="screen-subtitle">{plan.name}</p>
+    </div>
+    <button class="back-btn" onclick={onOpenPlan} aria-label="Edit your plan" title="Edit your plan">✎</button>
+  </div>
 
   {#if loading}
     <p class="muted">Loading…</p>

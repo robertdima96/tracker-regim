@@ -248,6 +248,21 @@ body {
   gap: 10px;
 }
 
+.card-button {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: border-color 0.15s, transform 0.08s;
+}
+.card-button:hover {
+  border-color: var(--sage);
+}
+.card-button:active {
+  transform: scale(0.99);
+}
+
 .card-list {
   display: flex;
   flex-direction: column;

@@ -12,7 +12,13 @@
   import { newId } from '../domain/id'
   import TimeField from '../components/TimeField.svelte'
 
-  let { driver, plan, onDone }: { driver: SqlDriver; plan: TreatmentPlan; onDone: () => void } = $props()
+  let {
+    driver,
+    plan,
+    onDone,
+    onBack,
+    continueLabel = 'Continue',
+  }: { driver: SqlDriver; plan: TreatmentPlan; onDone: () => void; onBack?: () => void; continueLabel?: string } = $props()
 
   let breakfastEnabled = $state(true)
   let breakfastEarliest = $state('08:00')
@@ -122,8 +128,18 @@
 </script>
 
 <div class="screen">
-  <h1>Meals &amp; routine</h1>
-  <p class="screen-subtitle">These are lifestyle anchors. Medication rules can move around them when needed.</p>
+  {#if onBack}
+    <div class="screen-header">
+      <button class="back-btn" onclick={onBack} aria-label="Back">←</button>
+      <div>
+        <h1>Meals &amp; routine</h1>
+        <p class="screen-subtitle" style="margin-top: 2px;">These are lifestyle anchors.</p>
+      </div>
+    </div>
+  {:else}
+    <h1>Meals &amp; routine</h1>
+    <p class="screen-subtitle">These are lifestyle anchors. Medication rules can move around them when needed.</p>
+  {/if}
 
   {#if loading}
     <p class="muted">Loading…</p>
@@ -176,6 +192,6 @@
 
     {#if error}<p class="error-text">{error}</p>{/if}
 
-    <button class="btn btn-primary" disabled={saving} onclick={saveContinue}>Continue</button>
+    <button class="btn btn-primary" disabled={saving} onclick={saveContinue}>{continueLabel}</button>
   {/if}
 </div>

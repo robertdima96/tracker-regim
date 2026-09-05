@@ -82,6 +82,13 @@ describe('scheduleService (end-to-end against real SQLite)', () => {
     const persistedAfter = await getDailyEventsForDate(driver, plan.id, DATE)
     const persistedBreakfast = persistedAfter.find((e) => e.templateId === 'breakfast')!
     expect(persistedBreakfast.currentWindow.earliest).toBe(localTimeToInstant(DATE, '09:17', 'UTC'))
+
+    // Regression: daily_events has no actual_at column of its own (it
+    // lives on administration_records) — a fresh fetch after logging a
+    // dose must still surface it, not just the in-memory result from
+    // logAdministration's own return value.
+    const persistedDrugA = persistedAfter.find((e) => e.templateId === 'drug-a')!
+    expect(persistedDrugA.actualAt).toBe(localTimeToInstant(DATE, '08:17', 'UTC'))
   })
 
   it('skip marks the daily event skipped without inventing an actual time', async () => {

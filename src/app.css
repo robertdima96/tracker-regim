@@ -138,12 +138,6 @@ body {
   padding-right: 36px;
 }
 
-.field input[type='time'] {
-  font-family: var(--font-serif);
-  font-size: 1.15rem;
-  font-weight: 600;
-}
-
 .field input[type='checkbox'] {
   width: auto;
   min-width: auto;
@@ -160,17 +154,77 @@ body {
   flex: 1 1 120px;
   min-width: 0;
 }
+/* A time picker (2 step buttons + 3 selects) needs real room to stay
+   legible — override the generic 120px basis so two side by side (e.g.
+   MealSetup's From/To) wrap onto their own lines on a narrow phone
+   instead of both shrinking into illegible slivers. */
+.field-row > .time-field {
+  flex-basis: 220px;
+  min-width: 220px;
+}
 
 .time-field-row {
   display: flex;
   align-items: stretch;
   gap: 8px;
 }
-.time-field-row input[type='time'] {
+
+.time-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
   flex: 1 1 auto;
   min-width: 0;
-  text-align: center;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--paper-raised);
+  padding: 4px 10px;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
+.time-picker:focus-within {
+  border-color: var(--sage);
+  box-shadow: 0 0 0 3px var(--sage-bg);
+}
+/* `.time-picker select` (class+type) beats the generic `.field select`
+   (also class+type) on source order, but relying on order is fragile —
+   this needs to fully override width/padding/border/background-image,
+   not just add font/color, since .field select's 36px right padding
+   (sized for a full-width dropdown arrow) alone was eating nearly all
+   the space on these compact 3-in-a-row selects and squeezing the
+   visible digit down to nothing. */
+.time-picker select.time-select {
+  appearance: none;
+  -webkit-appearance: none;
+  width: auto;
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--ink);
+  border: none;
+  background: none;
+  background-image: none;
+  padding: 6px 2px;
+  min-width: 2.2em;
+  text-align: center;
+  text-align-last: center;
+  cursor: pointer;
+}
+.time-picker select.time-select.time-meridiem {
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--sage-dark);
+  margin-left: 4px;
+  min-width: 2.8em;
+}
+.time-colon {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--ink-muted);
+}
+
 .time-step {
   flex: 0 0 auto;
   min-width: 46px;

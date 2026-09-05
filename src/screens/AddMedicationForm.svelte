@@ -9,6 +9,7 @@
   import { newId } from '../domain/id'
   import TimeField from '../components/TimeField.svelte'
   import { addMinutes, minutesToLocalTime } from '../scheduler/time'
+  import { parseMedicationText, type AnchorRef } from '../nlp/medicationTextParser'
 
   let {
     driver,
@@ -64,6 +65,35 @@
 
   let saving = $state(false)
   let error = $state('')
+
+  let quickText = $state('')
+  let quickWarnings = $state<string[]>([])
+  let showQuickAdd = $state(false)
+
+  function handleParse() {
+    const anchorRefs: AnchorRef[] = anchors.map((a) => ({ id: a.id, label: a.label, kind: a.kind }))
+    const result = parseMedicationText(quickText, anchorRefs)
+    displayName = result.displayName
+    if (result.strengthValue !== undefined) {
+      strengthValue = String(result.strengthValue)
+      if (result.strengthUnit) strengthUnit = result.strengthUnit
+    }
+    doses = result.doses.map((d) =>
+      d.timingType === 'fixed'
+        ? { id: newId(), timingType: 'fixed', fixedTime: d.fixedTime, anchorId: '', relation: 'before', ruleType: 'minimum', minMinutes: 60, maxMinutes: 90 }
+        : {
+            id: newId(),
+            timingType: 'relative',
+            fixedTime: '08:00',
+            anchorId: d.anchorId,
+            relation: d.relation,
+            ruleType: d.ruleType,
+            minMinutes: d.minMinutes,
+            maxMinutes: d.maxMinutes ?? d.minMinutes,
+          },
+    )
+    quickWarnings = result.warnings
+  }
 
   const instructionSources: Array<{ value: InstructionSource; label: string }> = [
     { value: 'clinician', label: 'Doctor' },
@@ -186,6 +216,27 @@
 </script>
 
 <div class="card" style="gap: 14px;">
+  {#if showQuickAdd}
+    <div class="card" style="background: var(--sage-bg); box-shadow: none; gap: 10px;">
+      <span class="event-label">Quick add with text</span>
+      <p class="muted" style="margin: 0;">
+        e.g. "Gastrofait 20-30 min before breakfast, lunch, and dinner" — fills in the fields below for you to review.
+      </p>
+      <div class="field">
+        <textarea rows="2" bind:value={quickText} placeholder="Describe the medication and when to take it…"></textarea>
+      </div>
+      {#each quickWarnings as w}
+        <p class="error-text" style="margin: 0;">{w}</p>
+      {/each}
+      <div class="field-row">
+        <button class="btn btn-secondary" onclick={() => (showQuickAdd = false)}>Close</button>
+        <button class="btn btn-primary" onclick={handleParse}>Parse</button>
+      </div>
+    </div>
+  {:else}
+    <button class="btn btn-secondary" onclick={() => (showQuickAdd = true)}>✎ Quick add with text</button>
+  {/if}
+
   <div class="field">
     <label for="med-name">Display name</label>
     <input id="med-name" type="text" bind:value={displayName} placeholder="e.g. Gastrofait" />

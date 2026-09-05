@@ -475,13 +475,27 @@ no screen — it's a single tap that logs the current device time).
 
 ## 22. Mockup prompts (for ChatGPT image generation)
 
-Shared style baseline for every prompt below: mobile app screen, portrait
-orientation, warm paper background (#F6F3EC), near-black warm ink text,
-sage green accent for medication-related elements, ocre/terracotta accent
-for meal-related elements, warm serif font for headings and times, clean
-sans-serif for body text, generous whitespace, rounded card corners, no
-harsh shadows. Calm and reliable, like a well-made scheduling utility —
-not a hospital portal, not a gamified habit-tracker.
+**Generate one screen per request, not all 13 in a single composite
+image.** A first attempt at generating all screens as one grid produced a
+generic blue/white clinical-app look, ignoring the style baseline below —
+image models default very strongly toward "blue = medical/health app"
+unless told not to, and that default wins even harder when generating many
+panels at once, because per-panel style adherence degrades with panel
+count. Explicit negative constraints (below) plus one-screen-at-a-time
+generation avoids this.
+
+Shared style baseline for every prompt below — include it in full each
+time, and lead the image request with the negative constraints:
+
+> Do NOT use blue or teal as a primary color. Do NOT give this a clinical,
+> hospital, or generic "health app" look — no stethoscope/cross icons, no
+> sterile white backgrounds. Instead: mobile app screen, portrait
+> orientation, warm paper background (#F6F3EC), near-black warm ink text,
+> sage green accent for medication-related elements, ocre/terracotta
+> accent for meal-related elements, warm serif font for headings and
+> times, clean sans-serif for body text, generous whitespace, rounded card
+> corners, no harsh shadows. Calm and reliable, like a well-made
+> scheduling utility — not a hospital portal, not a gamified habit-tracker.
 
 **1. Welcome:** Centered layout. Small line-icon mark near the top. Large
 warm-serif headline "Stop doing medication math." One-sentence subtext

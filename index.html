@@ -1,34 +1,13 @@
-<!DOCTYPE html>
-<html lang="ro">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tracker tratament</title>
-<meta name="theme-color" content="#F6F3EC">
-<link rel="manifest" href="manifest.json">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
-</head>
-<body>
-<header class="app-header">
-  <h1>Tracker tratament</h1>
-  <div class="header-controls">
-    <label>Data de start<input type="date" id="start-date-input"></label>
-    <label>Trezire<input type="time" id="wake-time-input"></label>
-    <label>Culcare<input type="time" id="sleep-time-input"></label>
-    <button id="export-backup-btn" type="button">Descarcă backup</button>
-    <label class="file-label">Încarcă backup<input type="file" id="import-backup-input" accept="application/json"></label>
-  </div>
-</header>
-
-<main>
-  <div id="banner" class="banner"></div>
-  <section id="calendar" class="calendar"></section>
-  <section id="day-panel" class="day-panel"><p>Se încarcă…</p></section>
-</main>
-
-<script src="script.js"></script>
-</body>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DoseFlow</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
 </html>

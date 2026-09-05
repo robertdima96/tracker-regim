@@ -271,7 +271,7 @@ export function calculateSchedule(input: CalculateScheduleInput): CalculateSched
   // non-actual) nodes keep their full computed window.
   const events: ScheduleEvent[] = []
   const explanations: Explanation[] = []
-  for (const [id, node] of nodes) {
+  for (const [nodeKey, node] of nodes) {
     if (!node.window) continue // already reported as a conflict above
     let currentWindow = node.window
     if (node.hasDefault && node.preferredPoint) {
@@ -283,8 +283,16 @@ export function calculateSchedule(input: CalculateScheduleInput): CalculateSched
       currentWindow = { earliest: clamped, latest: clamped }
     }
 
+    // Date-qualified — `nodeKey` alone (raw templateId, or `${templateId}::next`)
+    // is only unique within a single day's graph; every recurring template
+    // produces a fresh node each day, so the persisted/output id must carry
+    // the date to stay unique across days (a plain templateId would collide
+    // as a SQLite primary key the moment the same medication recurs
+    // tomorrow).
+    const eventId = `${nodeKey}::${date}`
+
     events.push({
-      id,
+      id: eventId,
       templateId: node.template.id,
       date,
       kind: node.template.kind,
@@ -297,7 +305,7 @@ export function calculateSchedule(input: CalculateScheduleInput): CalculateSched
 
     if (node.facts.length > 0) {
       explanations.push({
-        eventId: id,
+        eventId,
         headline: `${node.template.label}: ${currentWindow.earliest}${currentWindow.earliest !== currentWindow.latest ? ` – ${currentWindow.latest}` : ''}`,
         facts: node.facts,
       })

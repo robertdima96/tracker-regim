@@ -3,6 +3,35 @@ export type LocalDate = string // "YYYY-MM-DD"
 export type LocalTime = string // "HH:mm"
 export type DurationMinutes = number
 
+export type TreatmentPlanStatus = 'draft' | 'active' | 'paused' | 'completed'
+
+export type TreatmentPlan = {
+  id: string
+  name: string
+  startDate: LocalDate
+  endDate?: LocalDate
+  status: TreatmentPlanStatus
+  /** IANA timezone name the plan's schedule is computed in. */
+  timezone: string
+  notes?: string
+  createdAt: Instant
+  updatedAt: Instant
+}
+
+export type InstructionSource = 'clinician' | 'pharmacist' | 'package' | 'user_routine' | 'other'
+
+export type Medication = {
+  id: string
+  planId: string
+  displayName: string
+  strengthValue?: number
+  strengthUnit?: string
+  form?: string
+  notes?: string
+  activeFrom: LocalDate
+  activeUntil?: LocalDate
+}
+
 export type TimeWindow = {
   earliest: Instant
   latest: Instant
@@ -43,7 +72,7 @@ export type RelativeConstraint = {
   minOffsetMinutes: number
   maxOffsetMinutes?: number
   hardness: 'hard' | 'preference'
-  source: 'clinician' | 'pharmacist' | 'package' | 'user_routine' | 'other'
+  source: InstructionSource
 }
 
 export type ScheduleEventStatus = 'upcoming' | 'taken' | 'skipped' | 'cancelled'

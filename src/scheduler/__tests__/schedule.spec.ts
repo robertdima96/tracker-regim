@@ -117,7 +117,7 @@ describe('calculateSchedule', () => {
 
     const result = calculateSchedule({ templates, constraints, date: DATE, timezone: TZ, actualEvents, engineVersion: 'v0', revisionId: 'rev-1' })
 
-    const next = result.events.find((e) => e.id === 'c::next')!
+    const next = result.events.find((e) => e.templateId === 'c' && e.status === 'upcoming')!
     expect(next.currentWindow.earliest).toBe(localTimeToInstant(DATE, '16:13', TZ))
   })
 
@@ -163,7 +163,7 @@ describe('calculateSchedule', () => {
 
     const breakfastCorrected = corrected.events.find((e) => e.templateId === 'breakfast')!
     expect(breakfastCorrected.currentWindow.earliest).toBe(localTimeToInstant(DATE, '09:12', TZ))
-    expect(corrected.diff.some((d) => d.eventId === 'breakfast' && d.changeKind === 'window_changed')).toBe(true)
+    expect(corrected.diff.some((d) => d.eventId === breakfastCorrected.id && d.changeKind === 'window_changed')).toBe(true)
   })
 
   it('is idempotent: identical input produces identical output', () => {

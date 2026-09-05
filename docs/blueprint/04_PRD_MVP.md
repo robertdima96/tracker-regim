@@ -4,7 +4,7 @@
 
 **Working name:** DoseFlow  
 **Release:** MVP / Personal Alpha → Closed Beta  
-**Primary platform goal:** iOS + Android mobile application  
+**Primary platform goal:** iOS + Android via Capacitor (single Svelte codebase, native shells — see `DECISIONS.md`)  
 **Core mode:** offline-first, account optional/not required
 
 ## 2. Problem statement

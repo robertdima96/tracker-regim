@@ -1,8 +1,9 @@
 <script lang="ts">
   import type { SqlDriver } from '../database/driver'
+  import type { TreatmentPlan } from '../domain/types'
   import { createDraftPlan } from '../app/planService'
 
-  let { driver, onCreated }: { driver: SqlDriver; onCreated: () => void } = $props()
+  let { driver, onCreated }: { driver: SqlDriver; onCreated: (plan: TreatmentPlan) => void } = $props()
 
   const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
   let name = $state('')
@@ -18,8 +19,8 @@
     saving = true
     error = ''
     try {
-      await createDraftPlan(driver, name.trim(), timezone)
-      onCreated()
+      const plan = await createDraftPlan(driver, name.trim(), timezone)
+      onCreated(plan)
     } catch (e) {
       error = e instanceof Error ? e.message : String(e)
       saving = false

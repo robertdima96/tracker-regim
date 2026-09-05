@@ -11,28 +11,48 @@
 
   const driver = createCapacitorSqliteDriver()
 
+  // getWizardState only runs once, on load, to resume wherever a draft
+  // plan was left off. After that, navigation is explicit (goTo) so the
+  // user can go back to an earlier step without the data-derived state
+  // machine immediately bouncing them forward again because the data for
+  // later steps already exists.
   type Screen = WizardState | { screen: 'createPlan' } | { screen: 'loading' }
   let state = $state<Screen>({ screen: 'loading' })
 
-  async function refresh() {
+  onMount(async () => {
     state = await getWizardState(driver)
-  }
+  })
 
-  onMount(refresh)
+  function goTo(next: Screen) {
+    state = next
+  }
 </script>
 
 {#if state.screen === 'loading'}
   <div id="placeholder"><p>Loading…</p></div>
 {:else if state.screen === 'welcome'}
-  <Welcome onGetStarted={() => (state = { screen: 'createPlan' })} />
+  <Welcome onGetStarted={() => goTo({ screen: 'createPlan' })} />
 {:else if state.screen === 'createPlan'}
-  <CreatePlan {driver} onCreated={refresh} />
+  <CreatePlan {driver} onCreated={(plan) => goTo({ screen: 'mealSetup', plan })} />
 {:else if state.screen === 'mealSetup'}
-  <MealSetup {driver} plan={state.plan} onDone={refresh} />
+  {@const plan = state.plan}
+  <MealSetup {driver} {plan} onDone={() => goTo({ screen: 'medicationList', plan })} />
 {:else if state.screen === 'medicationList'}
-  <MedicationList {driver} plan={state.plan} onDone={refresh} />
+  {@const plan = state.plan}
+  <MedicationList
+    {driver}
+    {plan}
+    onDone={() => goTo({ screen: 'planReview', plan })}
+    onBack={() => goTo({ screen: 'mealSetup', plan })}
+  />
 {:else if state.screen === 'planReview'}
-  <PlanReview {driver} plan={state.plan} onActivated={refresh} />
+  {@const plan = state.plan}
+  <PlanReview
+    {driver}
+    {plan}
+    onActivated={(activated) => goTo({ screen: 'today', plan: activated })}
+    onBack={() => goTo({ screen: 'medicationList', plan })}
+  />
 {:else if state.screen === 'today'}
   <Today {driver} plan={state.plan} />
 {/if}

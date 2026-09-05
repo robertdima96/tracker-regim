@@ -1,9 +1,16 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import type { SqlDriver } from '../database/driver'
   import type { TreatmentPlan } from '../domain/types'
-  import { createEventTemplate } from '../database/repositories/eventTemplateRepository'
-  import { localTimeToInstant } from '../scheduler/time'
+  import {
+    createEventTemplate,
+    listEventTemplatesActiveOn,
+    updateEventTemplate,
+    type StoredEventTemplate,
+  } from '../database/repositories/eventTemplateRepository'
+  import { localTimeToInstant, minutesToLocalTime } from '../scheduler/time'
   import { newId } from '../domain/id'
+  import TimeField from '../components/TimeField.svelte'
 
   let { driver, plan, onDone }: { driver: SqlDriver; plan: TreatmentPlan; onDone: () => void } = $props()
 
@@ -22,23 +29,79 @@
   let wakeTime = $state('07:30')
   let sleepTime = $state('23:30')
 
+  // Populated on mount if this plan already has anchors (e.g. the user
+  // went back to edit after continuing past this screen) — save() then
+  // updates these rows in place instead of inserting duplicates.
+  let existingIdByLabel = $state<Record<string, string>>({})
+  let loading = $state(true)
   let saving = $state(false)
   let error = $state('')
 
+  onMount(async () => {
+    const templates = await listEventTemplatesActiveOn(driver, plan.id, plan.startDate)
+    const byLabel: Record<string, StoredEventTemplate> = {}
+    for (const t of templates) {
+      if (t.kind === 'meal' || t.kind === 'wake' || t.kind === 'sleep') byLabel[t.label] = t
+    }
+    existingIdByLabel = Object.fromEntries(Object.entries(byLabel).map(([label, t]) => [label, t.id]))
+
+    // Wake/Bedtime are always created (no on/off toggle), so their presence
+    // is a reliable "this screen has been saved before" signal. Only then
+    // does a missing meal mean "the user turned it off" rather than
+    // "they haven't gotten here yet" — otherwise a first-time visit would
+    // start every meal toggled off before the user touched anything.
+    const isRevisit = byLabel['Wake'] !== undefined || byLabel['Bedtime'] !== undefined
+
+    if (byLabel['Breakfast']?.preferredWindow) {
+      breakfastEnabled = true
+      breakfastEarliest = minutesToLocalTime(byLabel['Breakfast'].preferredWindow!.earliest, plan.timezone)
+      breakfastLatest = minutesToLocalTime(byLabel['Breakfast'].preferredWindow!.latest, plan.timezone)
+    } else if (isRevisit) {
+      breakfastEnabled = false
+    }
+    if (byLabel['Lunch']?.preferredWindow) {
+      lunchEnabled = true
+      lunchEarliest = minutesToLocalTime(byLabel['Lunch'].preferredWindow!.earliest, plan.timezone)
+      lunchLatest = minutesToLocalTime(byLabel['Lunch'].preferredWindow!.latest, plan.timezone)
+    } else if (isRevisit) {
+      lunchEnabled = false
+    }
+    if (byLabel['Dinner']?.preferredWindow) {
+      dinnerEnabled = true
+      dinnerEarliest = minutesToLocalTime(byLabel['Dinner'].preferredWindow!.earliest, plan.timezone)
+      dinnerLatest = minutesToLocalTime(byLabel['Dinner'].preferredWindow!.latest, plan.timezone)
+    } else if (isRevisit) {
+      dinnerEnabled = false
+    }
+    if (byLabel['Wake']?.preferredWindow) wakeTime = minutesToLocalTime(byLabel['Wake'].preferredWindow!.earliest, plan.timezone)
+    if (byLabel['Bedtime']?.preferredWindow) sleepTime = minutesToLocalTime(byLabel['Bedtime'].preferredWindow!.earliest, plan.timezone)
+
+    loading = false
+  })
+
   async function saveMeal(label: string, enabled: boolean, earliest: string, latest: string) {
     if (!enabled) return
-    await createEventTemplate(driver, {
-      id: newId(),
-      planId: plan.id,
-      kind: 'meal',
-      label,
-      recurrence: { type: 'daily' },
-      preferredWindow: {
-        earliest: localTimeToInstant(plan.startDate, earliest, plan.timezone),
-        latest: localTimeToInstant(plan.startDate, latest, plan.timezone),
-      },
-      activeFrom: plan.startDate,
-    })
+    const preferredWindow = {
+      earliest: localTimeToInstant(plan.startDate, earliest, plan.timezone),
+      latest: localTimeToInstant(plan.startDate, latest, plan.timezone),
+    }
+    const existingId = existingIdByLabel[label]
+    if (existingId) {
+      await updateEventTemplate(driver, { id: existingId, planId: plan.id, kind: 'meal', label, recurrence: { type: 'daily' }, preferredWindow, activeFrom: plan.startDate })
+    } else {
+      await createEventTemplate(driver, { id: newId(), planId: plan.id, kind: 'meal', label, recurrence: { type: 'daily' }, preferredWindow, activeFrom: plan.startDate })
+    }
+  }
+
+  async function savePoint(label: string, kind: 'wake' | 'sleep', time: string) {
+    const instant = localTimeToInstant(plan.startDate, time, plan.timezone)
+    const preferredWindow = { earliest: instant, latest: instant }
+    const existingId = existingIdByLabel[label]
+    if (existingId) {
+      await updateEventTemplate(driver, { id: existingId, planId: plan.id, kind, label, recurrence: { type: 'daily' }, preferredWindow, activeFrom: plan.startDate })
+    } else {
+      await createEventTemplate(driver, { id: newId(), planId: plan.id, kind, label, recurrence: { type: 'daily' }, preferredWindow, activeFrom: plan.startDate })
+    }
   }
 
   async function saveContinue() {
@@ -48,19 +111,8 @@
       await saveMeal('Breakfast', breakfastEnabled, breakfastEarliest, breakfastLatest)
       await saveMeal('Lunch', lunchEnabled, lunchEarliest, lunchLatest)
       await saveMeal('Dinner', dinnerEnabled, dinnerEarliest, dinnerLatest)
-
-      const wakeInstant = localTimeToInstant(plan.startDate, wakeTime, plan.timezone)
-      await createEventTemplate(driver, {
-        id: newId(), planId: plan.id, kind: 'wake', label: 'Wake', recurrence: { type: 'daily' },
-        preferredWindow: { earliest: wakeInstant, latest: wakeInstant }, activeFrom: plan.startDate,
-      })
-
-      const sleepInstant = localTimeToInstant(plan.startDate, sleepTime, plan.timezone)
-      await createEventTemplate(driver, {
-        id: newId(), planId: plan.id, kind: 'sleep', label: 'Bedtime', recurrence: { type: 'daily' },
-        preferredWindow: { earliest: sleepInstant, latest: sleepInstant }, activeFrom: plan.startDate,
-      })
-
+      await savePoint('Wake', 'wake', wakeTime)
+      await savePoint('Bedtime', 'sleep', sleepTime)
       onDone()
     } catch (e) {
       error = e instanceof Error ? e.message : String(e)
@@ -73,75 +125,57 @@
   <h1>Meals &amp; routine</h1>
   <p class="screen-subtitle">These are lifestyle anchors. Medication rules can move around them when needed.</p>
 
-  <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <strong>Breakfast</strong>
-      <input type="checkbox" bind:checked={breakfastEnabled} />
-    </div>
-    {#if breakfastEnabled}
-      <div class="field-row">
-        <div class="field">
-          <label for="breakfast-earliest">From</label>
-          <input id="breakfast-earliest" type="time" bind:value={breakfastEarliest} />
-        </div>
-        <div class="field">
-          <label for="breakfast-latest">To</label>
-          <input id="breakfast-latest" type="time" bind:value={breakfastLatest} />
-        </div>
+  {#if loading}
+    <p class="muted">Loading…</p>
+  {:else}
+    <div class="card">
+      <div class="row">
+        <span class="event-label"><span class="kind-dot meal"></span>Breakfast</span>
+        <input type="checkbox" bind:checked={breakfastEnabled} />
       </div>
-    {/if}
-  </div>
-
-  <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <strong>Lunch</strong>
-      <input type="checkbox" bind:checked={lunchEnabled} />
+      {#if breakfastEnabled}
+        <div class="field-row">
+          <TimeField id="breakfast-earliest" label="From" bind:value={breakfastEarliest} />
+          <TimeField id="breakfast-latest" label="To" bind:value={breakfastLatest} />
+        </div>
+      {/if}
     </div>
-    {#if lunchEnabled}
-      <div class="field-row">
-        <div class="field">
-          <label for="lunch-earliest">From</label>
-          <input id="lunch-earliest" type="time" bind:value={lunchEarliest} />
-        </div>
-        <div class="field">
-          <label for="lunch-latest">To</label>
-          <input id="lunch-latest" type="time" bind:value={lunchLatest} />
-        </div>
+
+    <div class="card">
+      <div class="row">
+        <span class="event-label"><span class="kind-dot meal"></span>Lunch</span>
+        <input type="checkbox" bind:checked={lunchEnabled} />
       </div>
-    {/if}
-  </div>
-
-  <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <strong>Dinner</strong>
-      <input type="checkbox" bind:checked={dinnerEnabled} />
+      {#if lunchEnabled}
+        <div class="field-row">
+          <TimeField id="lunch-earliest" label="From" bind:value={lunchEarliest} />
+          <TimeField id="lunch-latest" label="To" bind:value={lunchLatest} />
+        </div>
+      {/if}
     </div>
-    {#if dinnerEnabled}
-      <div class="field-row">
-        <div class="field">
-          <label for="dinner-earliest">From</label>
-          <input id="dinner-earliest" type="time" bind:value={dinnerEarliest} />
-        </div>
-        <div class="field">
-          <label for="dinner-latest">To</label>
-          <input id="dinner-latest" type="time" bind:value={dinnerLatest} />
-        </div>
+
+    <div class="card">
+      <div class="row">
+        <span class="event-label"><span class="kind-dot meal"></span>Dinner</span>
+        <input type="checkbox" bind:checked={dinnerEnabled} />
       </div>
-    {/if}
-  </div>
-
-  <div class="field-row">
-    <div class="field">
-      <label for="wake-time">Wake time</label>
-      <input id="wake-time" type="time" bind:value={wakeTime} />
+      {#if dinnerEnabled}
+        <div class="field-row">
+          <TimeField id="dinner-earliest" label="From" bind:value={dinnerEarliest} />
+          <TimeField id="dinner-latest" label="To" bind:value={dinnerLatest} />
+        </div>
+      {/if}
     </div>
-    <div class="field">
-      <label for="sleep-time">Bedtime</label>
-      <input id="sleep-time" type="time" bind:value={sleepTime} />
+
+    <div class="card">
+      <div class="field-row">
+        <TimeField id="wake-time" label="Wake time" bind:value={wakeTime} />
+        <TimeField id="sleep-time" label="Bedtime" bind:value={sleepTime} />
+      </div>
     </div>
-  </div>
 
-  {#if error}<p class="error-text">{error}</p>{/if}
+    {#if error}<p class="error-text">{error}</p>{/if}
 
-  <button class="btn btn-primary" disabled={saving} onclick={saveContinue}>Continue</button>
+    <button class="btn btn-primary" disabled={saving} onclick={saveContinue}>Continue</button>
+  {/if}
 </div>

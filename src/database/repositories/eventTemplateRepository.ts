@@ -58,6 +58,22 @@ export async function createEventTemplate(driver: SqlDriver, template: StoredEve
   )
 }
 
+export async function updateEventTemplate(driver: SqlDriver, template: StoredEventTemplate): Promise<void> {
+  await driver.execute(
+    `UPDATE event_templates SET
+       label = ?, recurrence_json = ?, preferred_earliest = ?, preferred_latest = ?, fixed_local_time = ?
+     WHERE id = ?`,
+    [
+      template.label,
+      JSON.stringify(template.recurrence),
+      template.preferredWindow?.earliest ?? null,
+      template.preferredWindow?.latest ?? null,
+      template.fixedLocalTime ?? null,
+      template.id,
+    ],
+  )
+}
+
 export async function listEventTemplatesActiveOn(driver: SqlDriver, planId: string, date: LocalDate): Promise<StoredEventTemplate[]> {
   const rows = await driver.query<EventTemplateRow>(
     `SELECT * FROM event_templates

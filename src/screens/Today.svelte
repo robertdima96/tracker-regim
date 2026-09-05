@@ -71,8 +71,8 @@
     <div class="card-list">
       {#each sorted as event (event.id)}
         <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <strong>{event.label}</strong>
+          <div class="row">
+            <span class="event-label"><span class="kind-dot {event.kind}"></span>{event.label}</span>
             <span class="badge {event.kind === 'medication' ? 'badge-sage' : 'badge-terracotta'}">{formatWindow(event.currentWindow)}</span>
           </div>
           {#if event.status === 'taken'}

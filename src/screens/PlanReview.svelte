@@ -9,7 +9,12 @@
   import { activatePlan } from '../app/planService'
   import { newId } from '../domain/id'
 
-  let { driver, plan, onActivated }: { driver: SqlDriver; plan: TreatmentPlan; onActivated: () => void } = $props()
+  let {
+    driver,
+    plan,
+    onActivated,
+    onBack,
+  }: { driver: SqlDriver; plan: TreatmentPlan; onActivated: (plan: TreatmentPlan) => void; onBack: () => void } = $props()
 
   let preview = $state<CalculateScheduleResult | undefined>(undefined)
   let labelByTemplateId = $state<Record<string, string>>({})
@@ -44,8 +49,8 @@
     activating = true
     error = ''
     try {
-      await activatePlan(driver, plan)
-      onActivated()
+      const activated = await activatePlan(driver, plan)
+      onActivated(activated)
     } catch (e) {
       error = e instanceof Error ? e.message : String(e)
       activating = false
@@ -54,8 +59,13 @@
 </script>
 
 <div class="screen">
-  <h1>Review your plan</h1>
-  <p class="screen-subtitle">Times will adapt when linked events change.</p>
+  <div class="screen-header">
+    <button class="back-btn" onclick={onBack} aria-label="Back">←</button>
+    <div>
+      <h1>Review your plan</h1>
+      <p class="screen-subtitle" style="margin-top: 2px;">Times will adapt when linked events change.</p>
+    </div>
+  </div>
 
   {#if !preview}
     <p class="muted">Calculating…</p>
@@ -71,9 +81,9 @@
 
     <div class="card-list">
       {#each [...preview.events].sort((a, b) => a.currentWindow.earliest.localeCompare(b.currentWindow.earliest)) as event}
-        <div class="card" style="flex-direction: row; justify-content: space-between; align-items: center;">
-          <span>{event.kind === 'medication' ? '💊' : event.kind === 'meal' ? '🍽️' : '⏰'} {labelByTemplateId[event.templateId] ?? event.templateId}</span>
-          <strong>{formatWindow(event.currentWindow)}</strong>
+        <div class="card row">
+          <span class="event-label"><span class="kind-dot {event.kind}"></span>{labelByTemplateId[event.templateId] ?? event.templateId}</span>
+          <span class="badge {event.kind === 'medication' ? 'badge-sage' : 'badge-terracotta'}">{formatWindow(event.currentWindow)}</span>
         </div>
       {/each}
     </div>

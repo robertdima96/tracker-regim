@@ -3,41 +3,71 @@
   import type { SqlDriver } from '../database/driver'
   import type { TreatmentPlan } from '../domain/types'
   import { listEventTemplatesActiveOn, type StoredEventTemplate } from '../database/repositories/eventTemplateRepository'
+  import { listConstraintsByPlan, type StoredConstraint } from '../database/repositories/constraintRepository'
   import AddMedicationForm from './AddMedicationForm.svelte'
 
-  let { driver, plan, onDone }: { driver: SqlDriver; plan: TreatmentPlan; onDone: () => void } = $props()
+  let { driver, plan, onDone, onBack }: { driver: SqlDriver; plan: TreatmentPlan; onDone: () => void; onBack: () => void } = $props()
 
   let templates = $state<StoredEventTemplate[]>([])
+  let constraints = $state<StoredConstraint[]>([])
   let showAddForm = $state(false)
 
   async function refresh() {
-    templates = await listEventTemplatesActiveOn(driver, plan.id, plan.startDate)
+    ;[templates, constraints] = await Promise.all([
+      listEventTemplatesActiveOn(driver, plan.id, plan.startDate),
+      listConstraintsByPlan(driver, plan.id),
+    ])
   }
   onMount(refresh)
 
-  const medications = $derived(templates.filter((t) => t.kind === 'medication'))
   const anchors = $derived(templates.filter((t) => t.kind === 'meal' || t.kind === 'wake' || t.kind === 'sleep'))
+  const medications = $derived(templates.filter((t) => t.kind === 'medication'))
+  const groupedByName = $derived.by(() => {
+    const groups = new Map<string, StoredEventTemplate[]>()
+    for (const med of medications) {
+      const group = groups.get(med.label) ?? []
+      group.push(med)
+      groups.set(med.label, group)
+    }
+    return [...groups.entries()]
+  })
+
+  function anchorLabel(id: string): string {
+    return anchors.find((a) => a.id === id)?.label ?? id
+  }
 
   function ruleSummary(t: StoredEventTemplate): string {
     if (t.fixedLocalTime) return `Fixed time ${t.fixedLocalTime}`
-    return 'Relative to an event'
+    const c = constraints.find((c) => c.sourceTemplateId === t.id)
+    if (!c) return 'No timing rule set'
+    const anchor = anchorLabel(c.targetTemplateId)
+    if (c.maxOffsetMinutes === undefined) return `At least ${c.minOffsetMinutes} min ${c.relation} ${anchor}`
+    if (c.maxOffsetMinutes === c.minOffsetMinutes) return `Exactly ${c.minOffsetMinutes} min ${c.relation} ${anchor}`
+    return `${c.minOffsetMinutes}–${c.maxOffsetMinutes} min ${c.relation} ${anchor}`
   }
 </script>
 
 <div class="screen">
-  <h1>Medications</h1>
-  <p class="screen-subtitle">{plan.name}</p>
+  <div class="screen-header">
+    <button class="back-btn" onclick={onBack} aria-label="Back">←</button>
+    <div>
+      <h1>Medications</h1>
+      <p class="screen-subtitle" style="margin-top: 2px;">{plan.name}</p>
+    </div>
+  </div>
 
   {#if medications.length === 0 && !showAddForm}
     <p class="muted">Add your treatment instructions and DoseFlow will build today's schedule.</p>
   {/if}
 
-  {#if medications.length > 0}
+  {#if groupedByName.length > 0}
     <div class="card-list">
-      {#each medications as med}
+      {#each groupedByName as [name, doses]}
         <div class="card">
-          <strong>{med.label}</strong>
-          <span class="muted">{ruleSummary(med)}</span>
+          <span class="event-label"><span class="kind-dot medication"></span>{name}</span>
+          {#each doses as dose}
+            <span class="muted">{ruleSummary(dose)}</span>
+          {/each}
         </div>
       {/each}
     </div>

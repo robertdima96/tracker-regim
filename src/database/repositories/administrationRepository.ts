@@ -48,3 +48,29 @@ export async function getSkippedTemplateIds(driver: SqlDriver, planId: string, d
   const rows = await getLatestAdministrationsForDate(driver, planId, date)
   return rows.filter((r) => r.action === 'skipped').map((r) => r.template_id)
 }
+
+export type HistoryEntry = {
+  date: LocalDate
+  label: string
+  kind: 'medication' | 'meal' | 'wake' | 'sleep' | 'custom'
+  plannedEarliest: Instant
+  status: string
+  actualAt: Instant | null
+}
+
+/** Every daily_event with its most recent actual time (if any) on or after `sinceDate`, newest day first — the raw material for a History screen. */
+export async function listHistoryForPlan(driver: SqlDriver, planId: string, sinceDate: LocalDate): Promise<HistoryEntry[]> {
+  return driver.query<HistoryEntry>(
+    `SELECT de.local_date AS date, et.label AS label, et.kind AS kind, de.planned_earliest AS plannedEarliest, de.status AS status,
+       (
+         SELECT ar.actual_at FROM administration_records ar
+         WHERE ar.daily_event_id = de.id AND ar.actual_at IS NOT NULL
+         ORDER BY ar.recorded_at DESC LIMIT 1
+       ) AS actualAt
+     FROM daily_events de
+     JOIN event_templates et ON de.template_id = et.id
+     WHERE et.plan_id = ? AND de.local_date >= ?
+     ORDER BY de.local_date DESC, de.planned_earliest ASC`,
+    [planId, sinceDate],
+  )
+}

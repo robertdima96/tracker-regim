@@ -76,7 +76,7 @@
   )
 </script>
 
-<div class="screen">
+<div class="screen screen-with-nav">
   <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
     <div style="min-width: 0;">
       <h1>Today</h1>

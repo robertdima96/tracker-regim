@@ -14,7 +14,7 @@
   } = $props()
 </script>
 
-<div class="screen">
+<div class="screen screen-with-nav">
   <div class="screen-header">
     <button class="back-btn" onclick={onBack} aria-label="Back to Today">←</button>
     <div>

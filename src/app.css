@@ -478,14 +478,20 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
+/* A standalone fixed bar (sibling of the .screen it floats over), not
+   nested inside one — .screen-with-nav below adds the bottom padding
+   needed so page content doesn't end up hidden behind it. */
 .bottom-nav {
-  position: sticky;
+  position: fixed;
   bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   border-top: 1px solid var(--border);
   background: var(--paper);
-  margin: 20px -20px -32px;
   padding: 10px 20px calc(10px + env(safe-area-inset-bottom));
+  max-width: 480px;
+  margin: 0 auto;
 }
 .bottom-nav button {
   flex: 1;
@@ -499,4 +505,8 @@ body {
 .bottom-nav button.active {
   color: var(--sage);
   font-weight: 600;
+}
+
+.screen-with-nav {
+  padding-bottom: 80px;
 }

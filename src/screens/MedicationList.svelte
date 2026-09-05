@@ -65,6 +65,7 @@
   }
 
   async function handleRemoveDose(dose: StoredEventTemplate) {
+    if (!confirm('Remove this dose? It will no longer appear on Today from now on.')) return
     removingKey = dose.id
     try {
       await removeDose(driver, dose.id, todayLocalDate(plan.timezone))
@@ -75,6 +76,7 @@
   }
 
   async function handleRemoveMedication(name: string, doses: StoredEventTemplate[]) {
+    if (!confirm(`Delete ${name} and all ${doses.length} of its doses? It will no longer appear on Today from now on.`)) return
     removingKey = name
     try {
       await removeMedication(driver, doses.map((d) => d.id), todayLocalDate(plan.timezone))

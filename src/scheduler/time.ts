@@ -34,7 +34,11 @@ export function todayLocalDate(timezone: string): LocalDate {
   return DateTime.now().setZone(timezone).toFormat('yyyy-MM-dd')
 }
 
-export function previousLocalDate(date: LocalDate): LocalDate {
+export function addDaysToLocalDate(date: LocalDate, deltaDays: number): LocalDate {
   const [year, month, day] = date.split('-').map(Number)
-  return DateTime.fromObject({ year, month, day }, { zone: 'utc' }).minus({ days: 1 }).toFormat('yyyy-MM-dd')
+  return DateTime.fromObject({ year, month, day }, { zone: 'utc' }).plus({ days: deltaDays }).toFormat('yyyy-MM-dd')
+}
+
+export function previousLocalDate(date: LocalDate): LocalDate {
+  return addDaysToLocalDate(date, -1)
 }

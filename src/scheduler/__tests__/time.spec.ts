@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addMinutes, diffMinutes, localTimeToInstant, minutesToLocalTime, todayLocalDate } from '../time'
+import { addDaysToLocalDate, addMinutes, diffMinutes, localTimeToInstant, minutesToLocalTime, previousLocalDate, todayLocalDate } from '../time'
 
 describe('localTimeToInstant', () => {
   it('combines a local date, local time, and IANA timezone into a UTC instant', () => {
@@ -41,5 +41,13 @@ describe('minutesToLocalTime', () => {
 describe('todayLocalDate', () => {
   it('returns a YYYY-MM-DD string', () => {
     expect(todayLocalDate('UTC')).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+})
+
+describe('addDaysToLocalDate / previousLocalDate', () => {
+  it('adds and subtracts days, crossing month boundaries', () => {
+    expect(addDaysToLocalDate('2026-09-05', 1)).toBe('2026-09-06')
+    expect(addDaysToLocalDate('2026-09-30', 1)).toBe('2026-10-01')
+    expect(previousLocalDate('2026-09-01')).toBe('2026-08-31')
   })
 })

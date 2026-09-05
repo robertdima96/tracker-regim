@@ -98,3 +98,9 @@ export async function listEventTemplatesActiveOn(driver: SqlDriver, planId: stri
   )
   return rows.map(rowToTemplate)
 }
+
+/** Every template ever created for this plan, including deactivated ones — for a full backup export, not schedule generation. */
+export async function listAllEventTemplatesForPlan(driver: SqlDriver, planId: string): Promise<StoredEventTemplate[]> {
+  const rows = await driver.query<EventTemplateRow>('SELECT * FROM event_templates WHERE plan_id = ? ORDER BY id', [planId])
+  return rows.map(rowToTemplate)
+}

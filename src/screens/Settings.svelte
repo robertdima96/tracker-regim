@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import type { SqlDriver } from '../database/driver'
   import type { TreatmentPlan } from '../domain/types'
   import { listMedicationsByPlan } from '../database/repositories/medicationRepository'
@@ -6,11 +7,44 @@
   import { listConstraintsByPlan } from '../database/repositories/constraintRepository'
   import { listHistoryForPlan } from '../database/repositories/administrationRepository'
   import { resetAllData } from '../database/migrate'
+  import { getNotificationHealth, requestNotificationPermission, type NotificationHealth } from '../notifications/notificationService'
+  import { todayLocalDate, minutesToLocalTime } from '../scheduler/time'
 
   let { driver, plan, onReset }: { driver: SqlDriver; plan: TreatmentPlan; onReset: () => void } = $props()
 
   let exporting = $state(false)
   let resetting = $state(false)
+  let health = $state<NotificationHealth | undefined>(undefined)
+  let requestingPermission = $state(false)
+
+  async function loadHealth() {
+    health = await getNotificationHealth(driver, plan.id, todayLocalDate(plan.timezone))
+  }
+  onMount(loadHealth)
+
+  async function enableReminders() {
+    requestingPermission = true
+    try {
+      await requestNotificationPermission()
+      await loadHealth()
+    } finally {
+      requestingPermission = false
+    }
+  }
+
+  function permissionLabel(state: string): string {
+    switch (state) {
+      case 'granted':
+        return 'Enabled'
+      case 'denied':
+        return 'Denied — enable in device settings'
+      case 'prompt':
+      case 'prompt-with-rationale':
+        return 'Needs permission'
+      default:
+        return state
+    }
+  }
 
   async function exportBackup() {
     exporting = true
@@ -56,6 +90,27 @@
   <div class="card">
     <span class="event-label">{plan.name}</span>
     <span class="muted">Started {plan.startDate} · {plan.timezone}</span>
+  </div>
+
+  <div class="card">
+    <span class="event-label">Reminders</span>
+    {#if health}
+      {#if health.permission === 'unsupported'}
+        <p class="muted">Reminders need the native app — the web version can't reliably deliver background notifications.</p>
+      {:else}
+        <div class="row"><span class="muted">Notifications</span><span>{permissionLabel(health.permission)}</span></div>
+        {#if health.exactAlarm !== 'unsupported'}
+          <div class="row"><span class="muted">Precise alarms</span><span>{permissionLabel(health.exactAlarm)}</span></div>
+        {/if}
+        <div class="row"><span class="muted">Scheduled today</span><span>{health.scheduledCount}</span></div>
+        {#if health.nextReminderAt}
+          <div class="row"><span class="muted">Next reminder</span><span>{minutesToLocalTime(health.nextReminderAt, plan.timezone)}</span></div>
+        {/if}
+        {#if health.permission !== 'granted'}
+          <button class="btn btn-secondary" disabled={requestingPermission} onclick={enableReminders}>Enable reminders</button>
+        {/if}
+      {/if}
+    {/if}
   </div>
 
   <div class="card">

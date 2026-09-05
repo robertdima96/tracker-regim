@@ -6,6 +6,7 @@ import './app.css'
 import App from './App.svelte'
 import { migrate } from './database/migrate'
 import { createCapacitorSqliteDriver, getSqliteConnection } from './database/drivers/capacitorSqliteDriver'
+import { initNotifications } from './notifications/notificationService'
 
 async function bootstrap() {
   await defineIonic(window)
@@ -21,6 +22,7 @@ async function bootstrap() {
 
   const driver = createCapacitorSqliteDriver()
   await migrate(driver)
+  await initNotifications(driver)
 
   mount(App, { target: document.getElementById('app')! })
 }

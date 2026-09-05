@@ -90,21 +90,23 @@ versions may need special exact-alarm access for APIs such as
 `setExact()` / `setExactAndAllowWhileIdle()` depending on the chosen
 permission model and use case.
 
-**Known plugin gap:** `@capacitor/local-notifications` schedules
-notifications but does not manage the Android 12+ `SCHEDULE_EXACT_ALARM`
-permission grant/check itself. Detecting and requesting this permission
-requires a small custom native Android plugin (a short Kotlin shim calling
-`AlarmManager.canScheduleExactAlarms()`), not pure JS/TypeScript. Size this
-as its own engineering task, not an afterthought inside the notification
-planner.
+**Correction (implemented against `@capacitor/local-notifications` 8.3.1):**
+this section originally assumed the plugin had no way to detect or request
+the Android 12+ `SCHEDULE_EXACT_ALARM` permission, requiring a custom native
+Kotlin shim. As of 8.3.0 the plugin exposes this directly —
+`checkExactNotificationSetting()` / `changeExactNotificationSetting()`
+(Android-only; iOS/web report `'unsupported'`) — and `schedule()` itself
+auto-prompts for the exact-alarm setting the first time a notification with
+`isExactNotification: true` (the default) is scheduled on API 31+. No native
+shim was written or is currently needed. `src/notifications/notificationService.ts`
+uses these directly.
 
 Engineering tasks:
-- build the native exact-alarm-permission shim described above;
-- implement capability detection using it;
-- guide user to settings only when justified;
-- test Doze/battery modes;
-- reconcile pending notifications on every app launch (see §12 — Capacitor apps get no automatic reboot receiver);
-- reschedule after permission changes.
+- implement capability detection using the plugin's own methods above (done);
+- guide user to settings only when justified (the plugin's own prompt-on-schedule covers the common case; a manual "Enable reminders" Settings entry point exists for the rest);
+- test Doze/battery modes (not verifiable in this environment — needs a real device);
+- reconcile pending notifications on every app launch (see §12 — Capacitor apps get no automatic reboot receiver) — done via re-running the diff algorithm on every recalculation, which Today already triggers on every load;
+- reschedule after permission changes (not yet handled explicitly — falls out of the next recalculation, but there's no listener that reacts to a permission change immediately).
 
 ## 7. Precision tiers
 

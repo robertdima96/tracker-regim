@@ -5,6 +5,7 @@
   import { getDailyEventsForDate, type DisplayableEvent } from '../database/repositories/scheduleRepository'
   import { recalculateAndPersist, logAdministration } from '../app/scheduleService'
   import { renderExplanationFact } from '../app/explainEvent'
+  import { syncNotifications } from '../notifications/notificationService'
   import { localTimeToInstant, minutesToLocalTime, addMinutes, todayLocalDate } from '../scheduler/time'
   import EventIcon from '../components/EventIcon.svelte'
   import TimeField from '../components/TimeField.svelte'
@@ -36,6 +37,7 @@
     conflicts = result.conflicts
     explanations = Object.fromEntries(result.explanations.map((e) => [e.eventId, e]))
     events = await getDailyEventsForDate(driver, plan.id, date)
+    if (events[0]) await syncNotifications(driver, plan, date, events, events[0].revisionId)
     loading = false
   }
   onMount(load)
@@ -92,6 +94,7 @@
       conflicts = result.conflicts
       explanations = Object.fromEntries(result.explanations.map((e) => [e.eventId, e]))
       events = await getDailyEventsForDate(driver, plan.id, date)
+      if (events[0]) await syncNotifications(driver, plan, date, events, events[0].revisionId)
     } finally {
       busyEventId = undefined
       loggingAtEventId = undefined

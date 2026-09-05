@@ -2,12 +2,16 @@
 // during the blueprint upgrade pass (the `relation` column on
 // `constraints`, and the six tables added beyond the original four).
 //
-// Deviation from that doc: `event_templates` gains `preferred_earliest`,
-// `preferred_latest`, and `fixed_local_time`. The blueprint's schema had
-// nowhere to persist an anchor's own preferred window (meal/wake/sleep)
-// or a medication's plain fixed time — both are required inputs to
-// `EventTemplate` in src/domain/types.ts and the scheduler can't seed
-// anchors without them. Worth folding back into the blueprint doc later.
+// Deviations from that doc, found by actually wiring the repositories up
+// against a real database rather than just reading the SQL:
+// - `event_templates` gains `preferred_earliest`, `preferred_latest`, and
+//   `fixed_local_time`. The blueprint's schema had nowhere to persist an
+//   anchor's own preferred window (meal/wake/sleep) or a medication's
+//   plain fixed time — both are required inputs to `EventTemplate` in
+//   src/domain/types.ts and the scheduler can't seed anchors without them.
+// - `treatment_plans` gains `notes` — present in the doc's own §2
+//   conceptual entity but missing from its §5 SQL.
+// Worth folding both back into the blueprint doc later.
 export const SCHEMA_STATEMENTS: string[] = [
   `CREATE TABLE IF NOT EXISTS treatment_plans (
     id TEXT PRIMARY KEY,
@@ -16,6 +20,7 @@ export const SCHEMA_STATEMENTS: string[] = [
     end_date TEXT,
     status TEXT NOT NULL,
     timezone_policy TEXT NOT NULL,
+    notes TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   )`,

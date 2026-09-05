@@ -13,6 +13,16 @@ import { addMinutes, localTimeToInstant } from './time'
 
 export type ActualEvent = { templateId: string; actualAt: Instant }
 
+/**
+ * The one place the `${templateId}::${date}` id format is defined —
+ * database repositories and application services must use this rather
+ * than re-deriving the string themselves, so the format can only drift in
+ * one place if it ever changes.
+ */
+export function dailyEventId(templateId: string, date: LocalDate): string {
+  return `${templateId}::${date}`
+}
+
 export type CalculateScheduleInput = {
   templates: EventTemplate[]
   constraints: RelativeConstraint[]
@@ -289,7 +299,7 @@ export function calculateSchedule(input: CalculateScheduleInput): CalculateSched
     // the date to stay unique across days (a plain templateId would collide
     // as a SQLite primary key the moment the same medication recurs
     // tomorrow).
-    const eventId = `${nodeKey}::${date}`
+    const eventId = dailyEventId(nodeKey, date)
 
     events.push({
       id: eventId,
